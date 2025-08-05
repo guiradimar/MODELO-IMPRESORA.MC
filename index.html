@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Buscador de Impresoras — Búsqueda inteligente</title>
+  <title>Buscador de Impresoras — Filtrado por modelo</title>
   <style>
     :root{
       --blue:#0b63c8; --blue-2:#0f5ab0; --accent:#ff6a00;
@@ -36,7 +36,7 @@
   <div class="wrap">
     <h1>BUSCADOR DE IMPRESORAS</h1>
     <div class="searchbar" role="search">
-      <input id="q" type="text" placeholder="Escribe modelo (p. ej. TS3350, TS 3350, 3350, Canon 3350…)" autocomplete="off">
+      <input id="q" type="text" placeholder="TS3350, TS 3350, 3350, Canon 3350, TR4751…" autocomplete="off">
       <button id="clear" class="btn btn-clear" aria-label="Limpiar búsqueda">Limpiar</button>
     </div>
     <div class="grid">
@@ -75,7 +75,7 @@
     'https://raw.githubusercontent.com/guiradimar/MODELO-IMPRESORA.MC/main/dataset_impresoras_v2.json'
   ];
 
-  // Normaliza, separa letras y números y tokeniza
+  // Normaliza, separa letras y números, tokeniza
   const normalize = s => (s||'')
     .toLowerCase()
     .replace(/([a-z])([0-9])/g, '$1 $2')
@@ -86,34 +86,45 @@
     .trim();
 
   const BRAND_STOPWORDS = new Set(['canon','hp','hewlett','epson','brother','lexmark','xerox','ricoh','kyocera','oki','samsung']);
-  const tokenSet = (s) => new Set(normalize(s).split(' ').filter(Boolean));
+  const SERIES_ALIASES = [
+    {key:'ts',  re:/\\bpixma\\s*ts\\b/},
+    {key:'mg',  re:/\\bpixma\\s*mg\\b/},
+    {key:'mx',  re:/\\bpixma\\s*mx\\b/},
+    {key:'tr',  re:/\\bpixma\\s*tr\\b|\\btr\\b/},
+    {key:'dj',  re:/\\bdeskjet\\b|\\bdj\\b/},
+    {key:'lj',  re:/\\blaserjet\\b|\\blj\\b/},
+    {key:'wc',  re:/\\bworkcentre\\b|\\bworkcenter\\b|\\bwc\\b/}
+  ];
 
-  const firstOf = (obj, keys) => {
-    for (const k of keys) {
-      if (obj && obj[k] != null && obj[k] !== '') return String(obj[k]);
-      const K = k.toUpperCase();
-      if (obj && obj[K] != null && obj[K] !== '') return String(obj[K]);
+  const numberTokens = s => (normalize(s).match(/\\b\\d{2,6}\\b/g) || []);
+
+  function modelTokensFromCompat(compatRaw){
+    const n = ' ' + normalize(compatRaw) + ' ';
+    const toks = new Set();
+    // series detectadas explícitas
+    for (const {key,re} of SERIES_ALIASES){
+      if (re.test(n)) toks.add(key);
     }
-    return '';
-  };
+    // números (modelos)
+    for (const num of numberTokens(n)) toks.add(num);
+    // si aparece 'pixma', añadimos 'canon' implícito (no se usa para filtrar, pero queda como metadato)
+    if (/\\bpixma\\b/.test(n)) toks.add('canon');
+    return toks;
+  }
 
-  function tokenizeQuery(qRaw){
-    const all = normalize(qRaw).split(' ').filter(Boolean);
-    const tokens = all.filter(t => !BRAND_STOPWORDS.has(t)); // ignora marca si la ponen
-    // Si alguien pone solo "3350", tokens=['3350']
-    return tokens.length ? tokens : all; // por si todo eran marcas (raro), usa all
+  function tokenizeQuery(q){
+    const t = normalize(q).split(' ').filter(Boolean);
+    // filtra marcas; si queda vacío, usa original
+    const filtered = t.filter(x => !BRAND_STOPWORDS.has(x));
+    return filtered.length ? filtered : t;
   }
 
   function buildIndex(data){
     return data.map(row => {
-      const searchText = [
-        firstOf(row, ['compatibilidades','compatibilidad']),
-        firstOf(row, ['descripcion','descripción','desc']),
-        firstOf(row, ['modelo','model','series','referencia','consumible'])
-      ].filter(Boolean).join(' ');
-      const tokens = tokenSet(searchText);
-      const cons = (firstOf(row, ['consumibles','cartucho','consumible'])||'').split(/\s*[;,\\/|]\\s*/).filter(Boolean);
-      const cap  = (firstOf(row, ['capacidad','cap'])||'').split(/\s*[;,\\/|]\\s*/).filter(Boolean);
+      const compat = [String(row.compatibilidades||row.compatibilidad||'')].join(' ');
+      const tokens = modelTokensFromCompat(compat);
+      const cons = String(row.consumibles||row.cartucho||row.consumible||'').split(/\\s*[;,\\/|]\\s*/).filter(Boolean);
+      const cap  = String(row.capacidad||row.cap||'').split(/\\s*[;,\\/|]\\s*/).filter(Boolean);
       return { tokens, cons, cap };
     });
   }
@@ -134,15 +145,23 @@
   function searchIndex(index, qRaw){
     const qTokens = tokenizeQuery(qRaw);
     if (!qTokens.length){ render([],[]); return; }
+    // Separar tokens letra/serie (ts, mg, tr, wc...) y números
+    const seriesQ = new Set(qTokens.filter(t => isNaN(Number(t)) === true));
+    const numsQ   = new Set(qTokens.filter(t => /^\\d{2,6}$/.test(t)));
     const setC = new Set(), setK = new Set();
     for (const it of index){
-      // Todos los tokens de consulta deben estar presentes
-      // Regla extra: si un token de la consulta es numérico, debe estar como token exacto en el índice
+      // Regla: si la query trae serie (ts/mg/tr...), esa serie DEBE estar en tokens del índice
+      // y todos los números de la query DEBEN estar también.
       let ok = true;
-      for (const t of qTokens){
-        if (!it.tokens.has(t)) { ok = false; break; }
-      }
+      for (const s of seriesQ){ if (!it.tokens.has(s)) { ok=false; break; } }
       if (!ok) continue;
+      for (const n of numsQ){ if (!it.tokens.has(n)) { ok=false; break; } }
+      if (!ok) continue;
+      // Si la query solo trae número (3350), pedimos que el número esté en tokens (compatibilidades)
+      if (!seriesQ.size && numsQ.size && !Array.from(numsQ).every(n=>it.tokens.has(n))) continue;
+      // Si la query no trae ni serie ni número (raro), no devolvemos nada.
+      if (!seriesQ.size && !numsQ.size) continue;
+
       it.cons.forEach(x => x && setC.add(x));
       it.cap.forEach(x => x && setK.add(x));
     }
@@ -167,7 +186,7 @@
   btnClear.addEventListener('click', ()=>{ input.value=''; render([],[]); input.focus(); });
   btnGoogle.addEventListener('click', ()=>{ const q=input.value.trim(); if(q) window.open('https://www.google.com/search?q='+encodeURIComponent(q),'_blank'); });
 
-  // Primera búsqueda si hay ?q=
+  // ?q= inicial
   const qParam = new URL(location).searchParams.get('q');
   if (qParam){ input.value = qParam; }
   doSearch();
