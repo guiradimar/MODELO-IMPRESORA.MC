@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Buscador de Impresoras</title>
+  <title>Buscador de Impresoras — Búsqueda inteligente</title>
   <style>
     :root{
       --blue:#0b63c8; --blue-2:#0f5ab0; --accent:#ff6a00;
@@ -11,15 +11,12 @@
       --shadow: 0 10px 24px rgba(0,0,0,.08); --radius:18px;
     }
     *{box-sizing:border-box}
-    body{ margin:0; font-family:ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+    body{ margin:0; font-family:ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
       background:var(--bg); color:#0f172a;}
     .wrap{max-width:1100px;margin:0 auto;padding:42px 20px 80px}
     h1{margin:0 0 20px;text-align:center;font-size:clamp(28px,4vw,46px);letter-spacing:.5px;color:var(--blue);font-weight:800}
     .searchbar{display:flex;gap:12px;justify-content:center;margin:10px auto 18px;max-width:860px}
-    .searchbar input{
-      flex:1;min-width:300px;background:#fff;border:1px solid #e5e7eb;border-radius:14px;
-      padding:14px 16px;font-size:16px;outline:none;box-shadow:var(--shadow);
-    }
+    .searchbar input{flex:1;min-width:300px;background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:14px 16px;font-size:16px;outline:none;box-shadow:var(--shadow)}
     .btn{border:0;border-radius:12px;padding:12px 18px;font-weight:700;cursor:pointer;transition:.18s transform ease;box-shadow:var(--shadow)}
     .btn:active{transform:scale(.98)}
     .btn-clear{background:var(--accent);color:#fff;}
@@ -30,48 +27,40 @@
     .card header{padding:16px 18px;background:linear-gradient(0deg,#fafcff, #ffffff);border-bottom:1px solid #eef2f7;font-weight:800;color:var(--blue-2);display:flex;justify-content:space-between;align-items:center}
     .count{color:#64748b;font-weight:700;font-size:14px}
     .card .body{padding:18px;min-height:220px;color:#111827;line-height:1.45}
-    .muted{color:var(--muted);font-style:italic}
-    .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+    footer{margin-top:32px;text-align:center;color:#94a3b8;font-size:12px}
     ul{margin:0;padding-left:18px}
     li{margin:.3rem 0}
-    footer{margin-top:32px;text-align:center;color:#94a3b8;font-size:12px}
   </style>
 </head>
 <body>
   <div class="wrap">
     <h1>BUSCADOR DE IMPRESORAS</h1>
-
     <div class="searchbar" role="search">
-      <label for="q" class="sr-only">Modelo de impresora</label>
-      <input id="q" type="text" placeholder="Escribe modelo (p. ej. TS3350, TR 4751…)" autocomplete="off" aria-label="Buscar por modelo">
+      <input id="q" type="text" placeholder="Escribe modelo (p. ej. TS3350, TS 3350, 3350, Canon 3350…)" autocomplete="off">
       <button id="clear" class="btn btn-clear" aria-label="Limpiar búsqueda">Limpiar</button>
     </div>
-
     <div class="grid">
       <section class="card" aria-labelledby="h-consumibles">
         <header>
           <span id="h-consumibles">CONSUMIBLES</span>
           <span id="count-cons" class="count">—</span>
         </header>
-        <div id="consumibles" class="body" aria-live="polite" role="status">—</div>
+        <div id="consumibles" class="body">—</div>
       </section>
-
       <section class="card" aria-labelledby="h-capacidad">
         <header>
           <span id="h-capacidad">CAPACIDAD</span>
           <span id="count-cap" class="count">—</span>
         </header>
-        <div id="capacidad" class="body" aria-live="polite" role="status">—</div>
+        <div id="capacidad" class="body">—</div>
       </section>
     </div>
-
-    <button id="google" class="btn btn-google" aria-label="Buscar este modelo en Google">Buscar en Google</button>
-
+    <button id="google" class="btn btn-google">Buscar en Google</button>
     <footer>© 2025 — Buscador de consumibles y capacidades</footer>
   </div>
 
 <script>
-(() => {
+(async () => {
   const $ = sel => document.querySelector(sel);
   const input = $('#q');
   const outCons = $('#consumibles');
@@ -81,18 +70,23 @@
   const btnClear = $('#clear');
   const btnGoogle = $('#google');
 
-  // 1) Intentamos local junto a index.html. 2) Fallback a RAW de GitHub.
   const DATASET_CANDIDATES = [
     './dataset_impresoras_v2.json',
     'https://raw.githubusercontent.com/guiradimar/MODELO-IMPRESORA.MC/main/dataset_impresoras_v2.json'
   ];
 
+  // Normaliza, separa letras y números y tokeniza
   const normalize = s => (s||'')
     .toLowerCase()
-    .normalize('NFD').replace(/[\\u0300-\\u036f]/g,'') // sin acentos
-    .replace(/[^a-z0-9]+/g,' ')                      // separadores simples
+    .replace(/([a-z])([0-9])/g, '$1 $2')
+    .replace(/([0-9])([a-z])/g, '$1 $2')
+    .normalize('NFD').replace(/[\\u0300-\\u036f]/g,'')
+    .replace(/[^a-z0-9]+/g,' ')
     .replace(/\\s+/g,' ')
     .trim();
+
+  const BRAND_STOPWORDS = new Set(['canon','hp','hewlett','epson','brother','lexmark','xerox','ricoh','kyocera','oki','samsung']);
+  const tokenSet = (s) => new Set(normalize(s).split(' ').filter(Boolean));
 
   const firstOf = (obj, keys) => {
     for (const k of keys) {
@@ -103,187 +97,80 @@
     return '';
   };
 
-  const SEP = /\\s*[;,\\/|]\\s*/;
-  const coll = new Intl.Collator('es', {numeric:true, sensitivity:'base'});
-  const naturalSort = arr => arr.sort(coll.compare);
-
-  function escapeHtml(s){
-    return String(s).replace(/[&<>\"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',\"'\":'&#39;'}[m]));
+  function tokenizeQuery(qRaw){
+    const all = normalize(qRaw).split(' ').filter(Boolean);
+    const tokens = all.filter(t => !BRAND_STOPWORDS.has(t)); // ignora marca si la ponen
+    // Si alguien pone solo "3350", tokens=['3350']
+    return tokens.length ? tokens : all; // por si todo eran marcas (raro), usa all
   }
 
-  function groupConsumibles(list){
-    const map = new Map();
-    for (const x of list){
-      const base = x.replace(/\\b(XL|XXL)\\b/ig,'').replace(/\\s+/g,' ').trim();
-      if (!map.has(base)) map.set(base, new Set());
-      map.get(base).add(x);
-    }
-    return Array.from(map.entries()).map(([base,set])=>({base, variantes: naturalSort(Array.from(set))}));
+  function buildIndex(data){
+    return data.map(row => {
+      const searchText = [
+        firstOf(row, ['compatibilidades','compatibilidad']),
+        firstOf(row, ['descripcion','descripción','desc']),
+        firstOf(row, ['modelo','model','series','referencia','consumible'])
+      ].filter(Boolean).join(' ');
+      const tokens = tokenSet(searchText);
+      const cons = (firstOf(row, ['consumibles','cartucho','consumible'])||'').split(/\s*[;,\\/|]\\s*/).filter(Boolean);
+      const cap  = (firstOf(row, ['capacidad','cap'])||'').split(/\s*[;,\\/|]\\s*/).filter(Boolean);
+      return { tokens, cons, cap };
+    });
   }
 
-  function normalizeCap(v){
-    const txt = String(v).trim();
-    const m = txt.match(/(\\d+(?:[.,]\\d+)?)\\s*(ml|pag|pags|pág|páginas)?/i);
-    if (!m) return txt;
-    let num = parseFloat(m[1].replace(',','.'));
-    const unit = (m[2]||'').toLowerCase();
-    if (unit.startsWith('pag') || unit.startsWith('pág')) return `${Math.round(num)} páginas`;
-    if (!unit) return String(num);
-    return `${num} ml`;
-  }
-
-  const debounce = (fn,ms)=>{let t;return (...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms)}};
-
-  function renderEmpty(){
-    outCons.textContent = '—';
-    outCap.textContent = '—';
-    cntCons.textContent = '—';
-    cntCap.textContent = '—';
-  }
-
-  function renderResults(consumibles, capacidades){
-    const consSorted = naturalSort(consumibles.slice());
-    const capNorm = capacidades.map(normalizeCap);
-    const capSorted = naturalSort(capNorm);
-
-    const grouped = groupConsumibles(consSorted);
-    outCons.innerHTML = grouped.length
-      ? '<ul>' + grouped.map(g=>'<li><strong>'+escapeHtml(g.base)+':</strong> '+g.variantes.map(escapeHtml).join(', ')+'</li>').join('') + '</ul>'
-      : '—';
-
-    outCap.innerHTML = capSorted.length
-      ? '<ul>' + capSorted.map(x=>'<li>'+escapeHtml(x)+'</li>').join('') + '</ul>'
-      : '—';
-
-    cntCons.textContent = grouped.length ? String(consSorted.length) : '0';
-    cntCap.textContent  = capSorted.length ? String(capSorted.length)  : '0';
-  }
-
-  // ---- Web Worker para índice y búsqueda ----
-  const workerCode = \`
-    const SEP = /\\\\s*[;,\\\\/|]\\\\s*/;
-    const normalize = s => (s||'')
-      .toLowerCase()
-      .normalize('NFD').replace(/[\\\\u0300-\\\\u036f]/g,'')
-      .replace(/[^a-z0-9]+/g,' ')
-      .replace(/\\\\s+/g,' ')
-      .trim();
-    function firstOf(obj, keys){
-      for (const k of keys) {
-        if (obj && obj[k] != null && obj[k] !== '') return String(obj[k]);
-        const K = k.toUpperCase();
-        if (obj && obj[K] != null && obj[K] !== '') return String(obj[K]);
-      }
-      return '';
-    }
-    let INDEX = [];
-    self.onmessage = (e) => {
-      const {type, payload} = e.data || {};
-      if (type === 'build'){
-        const DATA = payload || [];
-        INDEX = DATA.map(r=>{
-          const text = [
-            firstOf(r, ['compatibilidades','compatibilidad']),
-            firstOf(r, ['descripcion','descripción','desc']),
-            firstOf(r, ['modelo','model','series','referencia','consumible'])
-          ].filter(Boolean).join(' | ');
-          const cons = (firstOf(r, ['consumibles','cartucho','consumible'])||'').split(SEP).filter(Boolean);
-          const cap  = (firstOf(r, ['capacidad','cap'])||'').split(SEP).filter(Boolean);
-          return { norm: normalize(text), cons, cap };
-        });
-        self.postMessage({type:'ready'});
-      }
-      if (type === 'search'){
-        const q = String(payload||'').trim();
-        if (!q){ self.postMessage({type:'result', consumibles:[], capacidades:[]}); return; }
-        const qn = normalize(q);
-        const tokens = qn.split(' ').filter(Boolean);
-        const setC = new Set(), setK = new Set();
-        for (const it of INDEX){
-          let ok = true;
-          for (const t of tokens){ if (!it.norm.includes(t)) { ok=false; break; } }
-          if (!ok) continue;
-          for (const c of it.cons) if (c) setC.add(c);
-          for (const k of it.cap)  if (k) setK.add(k);
+  async function loadData(){
+    for (const url of DATASET_CANDIDATES){
+      try{
+        const r = await fetch(url, {cache:'reload'});
+        if (r.ok){
+          const json = await r.json();
+          if (Array.isArray(json)) return json;
         }
-        self.postMessage({type:'result', consumibles:Array.from(setC), capacidades:Array.from(setK)});
+      }catch(_){}
+    }
+    return [];
+  }
+
+  function searchIndex(index, qRaw){
+    const qTokens = tokenizeQuery(qRaw);
+    if (!qTokens.length){ render([],[]); return; }
+    const setC = new Set(), setK = new Set();
+    for (const it of index){
+      // Todos los tokens de consulta deben estar presentes
+      // Regla extra: si un token de la consulta es numérico, debe estar como token exacto en el índice
+      let ok = true;
+      for (const t of qTokens){
+        if (!it.tokens.has(t)) { ok = false; break; }
       }
-    };
-  \`;
-  const worker = new Worker(URL.createObjectURL(new Blob([workerCode], {type:'text/javascript'})));
-  let workerReady = false;
-  worker.onmessage = (e)=>{
-    const {type, consumibles, capacidades} = e.data || {};
-    if (type === 'ready'){ workerReady = true; if (input.value.trim()) search(); return; }
-    if (type === 'result'){ renderResults(consumibles||[], capacidades||[]); }
-  };
-
-  async function loadData() {
-    const key = 'dataset_cache_v1';
-    let text = null;
-    for (const url of DATASET_CANDIDATES) {
-      try {
-        const res = await fetch(url, {cache:'reload'});
-        if (res.ok) { text = await res.text(); console.info('Dataset cargado desde:', url); break; }
-      } catch (_) {}
+      if (!ok) continue;
+      it.cons.forEach(x => x && setC.add(x));
+      it.cap.forEach(x => x && setK.add(x));
     }
-    if (!text) {
-      const cached = localStorage.getItem(key);
-      if (cached) {
-        try {
-          const json = JSON.parse(cached);
-          if (Array.isArray(json)) { worker.postMessage({type:'build', payload: json}); console.warn('Usando dataset de caché local'); return; }
-        } catch(_) {}
-      }
-      console.warn('No se pudo cargar ningún dataset.');
-      return;
-    }
-    localStorage.setItem(key, text);
-    try {
-      const json = JSON.parse(text);
-      if (Array.isArray(json)) { worker.postMessage({type:'build', payload: json}); console.log('Registros:', json.length); }
-    } catch (e) {
-      console.error('JSON inválido:', e);
-    }
+    render(Array.from(setC), Array.from(setK));
   }
 
-  const doSearch = ()=> {
-    const raw = input.value.trim();
-    if (!raw || !workerReady){ renderEmpty(); return; }
-    worker.postMessage({type:'search', payload: raw});
-  };
-  const search = debounce(doSearch, 180);
-
-  function syncURL(){
-    const v = input.value.trim();
-    const url = new URL(location);
-    v ? url.searchParams.set('q', v) : url.searchParams.delete('q');
-    history.replaceState(null,'',url);
+  function render(consumibles, capacidades){
+    const toList = arr => arr.length ? '<ul>'+arr.map(v=>'<li>'+v.replace(/[&<>]/g, s=>({ '&':'&amp;','<':'&lt;','>':'&gt;' }[s]))+'</li>').join('')+'</ul>' : '—';
+    outCons.innerHTML = toList(consumibles);
+    outCap.innerHTML = toList(capacidades);
+    cntCons.textContent = String(consumibles.length || 0);
+    cntCap.textContent = String(capacidades.length || 0);
   }
-  const syncURLdebounced = debounce(syncURL, 180);
 
-  btnClear.addEventListener('click', () => { input.value=''; syncURL(); renderEmpty(); input.focus(); });
-  input.addEventListener('input', () => { search(); syncURLdebounced(); });
-  input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doSearch(); } });
+  const DATA = await loadData();
+  const INDEX = buildIndex(DATA);
 
-  btnGoogle.addEventListener('click', () => {
-    const q = input.value.trim();
-    if (!q) return;
-    const queries = [
-      q + ' cartuchos OR tinta',
-      q + ' capacidad ml OR páginas',
-      q + ' compatible'
-    ];
-    window.open('https://www.google.com/search?q='+encodeURIComponent(queries.join(' OR ')),'_blank');
-  });
+  const debounce = (fn,ms)=>{ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),ms) } };
+  const doSearch = ()=> searchIndex(INDEX, input.value);
+  input.addEventListener('input', debounce(doSearch, 150));
+  input.addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); doSearch(); } });
+  btnClear.addEventListener('click', ()=>{ input.value=''; render([],[]); input.focus(); });
+  btnGoogle.addEventListener('click', ()=>{ const q=input.value.trim(); if(q) window.open('https://www.google.com/search?q='+encodeURIComponent(q),'_blank'); });
 
-  function bootFromURL(){
-    const q = new URL(location).searchParams.get('q');
-    if (q) { input.value = q; }
-  }
-  renderEmpty();
-  bootFromURL();
-  loadData();
+  // Primera búsqueda si hay ?q=
+  const qParam = new URL(location).searchParams.get('q');
+  if (qParam){ input.value = qParam; }
+  doSearch();
 })();
 </script>
 </body>
