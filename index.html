@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Buscador de Impresoras — Filtrado por modelo</title>
+  <title>Buscador de Impresoras — Modelo preciso</title>
   <style>
     :root{
       --blue:#0b63c8; --blue-2:#0f5ab0; --accent:#ff6a00;
@@ -40,18 +40,12 @@
       <button id="clear" class="btn btn-clear" aria-label="Limpiar búsqueda">Limpiar</button>
     </div>
     <div class="grid">
-      <section class="card" aria-labelledby="h-consumibles">
-        <header>
-          <span id="h-consumibles">CONSUMIBLES</span>
-          <span id="count-cons" class="count">—</span>
-        </header>
+      <section class="card">
+        <header><span>CONSUMIBLES</span><span id="count-cons" class="count">—</span></header>
         <div id="consumibles" class="body">—</div>
       </section>
-      <section class="card" aria-labelledby="h-capacidad">
-        <header>
-          <span id="h-capacidad">CAPACIDAD</span>
-          <span id="count-cap" class="count">—</span>
-        </header>
+      <section class="card">
+        <header><span>CAPACIDAD</span><span id="count-cap" class="count">—</span></header>
         <div id="capacidad" class="body">—</div>
       </section>
     </div>
@@ -75,7 +69,6 @@
     'https://raw.githubusercontent.com/guiradimar/MODELO-IMPRESORA.MC/main/dataset_impresoras_v2.json'
   ];
 
-  // Normaliza, separa letras y números, tokeniza
   const normalize = s => (s||'')
     .toLowerCase()
     .replace(/([a-z])([0-9])/g, '$1 $2')
@@ -86,46 +79,46 @@
     .trim();
 
   const BRAND_STOPWORDS = new Set(['canon','hp','hewlett','epson','brother','lexmark','xerox','ricoh','kyocera','oki','samsung']);
-  const SERIES_ALIASES = [
-    {key:'ts',  re:/\\bpixma\\s*ts\\b/},
-    {key:'mg',  re:/\\bpixma\\s*mg\\b/},
-    {key:'mx',  re:/\\bpixma\\s*mx\\b/},
-    {key:'tr',  re:/\\bpixma\\s*tr\\b|\\btr\\b/},
-    {key:'dj',  re:/\\bdeskjet\\b|\\bdj\\b/},
-    {key:'lj',  re:/\\blaserjet\\b|\\blj\\b/},
-    {key:'wc',  re:/\\bworkcentre\\b|\\bworkcenter\\b|\\bwc\\b/}
-  ];
 
-  const numberTokens = s => (normalize(s).match(/\\b\\d{2,6}\\b/g) || []);
-
-  function modelTokensFromCompat(compatRaw){
-    const n = ' ' + normalize(compatRaw) + ' ';
-    const toks = new Set();
-    // series detectadas explícitas
-    for (const {key,re} of SERIES_ALIASES){
-      if (re.test(n)) toks.add(key);
+  function firstOf(obj, keys){
+    for (const k of keys){
+      if (obj && obj[k] != null && obj[k] !== '') return String(obj[k]);
+      const K = k.toUpperCase();
+      if (obj && obj[K] != null && obj[K] !== '') return String(obj[K]);
     }
-    // números (modelos)
-    for (const num of numberTokens(n)) toks.add(num);
-    // si aparece 'pixma', añadimos 'canon' implícito (no se usa para filtrar, pero queda como metadato)
-    if (/\\bpixma\\b/.test(n)) toks.add('canon');
-    return toks;
+    return '';
   }
 
-  function tokenizeQuery(q){
-    const t = normalize(q).split(' ').filter(Boolean);
-    // filtra marcas; si queda vacío, usa original
-    const filtered = t.filter(x => !BRAND_STOPWORDS.has(x));
-    return filtered.length ? filtered : t;
+  const SEP = /\\s*[;,\\/|]\\s*/;
+
+  function tokensFromCompat(compat){
+    const n = normalize(compat);
+    const series = new Set();
+    if (/\\bpixma\\s*ts\\b/.test(n) || /\\bts\\b/.test(n)) series.add('ts');
+    if (/\\bpixma\\s*mg\\b/.test(n) || /\\bmg\\b/.test(n)) series.add('mg');
+    if (/\\bpixma\\s*mx\\b/.test(n) || /\\bmx\\b/.test(n)) series.add('mx');
+    if (/\\bpixma\\s*tr\\b/.test(n) || /\\btr\\b/.test(n)) series.add('tr');
+    if (/\\bdeskjet\\b/.test(n) || /\\bdj\\b/.test(n)) series.add('dj');
+    if (/\\blaserjet\\b/.test(n) || /\\blj\\b/.test(n)) series.add('lj');
+    if (/\\bworkcentre\\b/.test(n) || /\\bwc\\b/.test(n)) series.add('wc');
+    const nums = new Set((n.match(/\\b\\d{2,6}\\b/g) || []));
+    return {series, nums};
+  }
+
+  function parseQuery(q){
+    const toks = normalize(q).split(' ').filter(Boolean).filter(t => !BRAND_STOPWORDS.has(t));
+    const series = new Set(toks.filter(t => isNaN(Number(t))));
+    const nums   = new Set(toks.filter(t => /^\\d{2,6}$/.test(t)));
+    return {series, nums};
   }
 
   function buildIndex(data){
-    return data.map(row => {
-      const compat = [String(row.compatibilidades||row.compatibilidad||'')].join(' ');
-      const tokens = modelTokensFromCompat(compat);
-      const cons = String(row.consumibles||row.cartucho||row.consumible||'').split(/\\s*[;,\\/|]\\s*/).filter(Boolean);
-      const cap  = String(row.capacidad||row.cap||'').split(/\\s*[;,\\/|]\\s*/).filter(Boolean);
-      return { tokens, cons, cap };
+    return data.map(r => {
+      const compat = firstOf(r, ['compatibilidades','compatibilidad']);
+      const {series, nums} = tokensFromCompat(compat);
+      const cons = (firstOf(r, ['consumibles','cartucho','consumible'])||'').split(SEP).filter(Boolean);
+      const cap  = (firstOf(r, ['capacidad','cap'])||'').split(SEP).filter(Boolean);
+      return {series, nums, cons, cap};
     });
   }
 
@@ -135,41 +128,16 @@
         const r = await fetch(url, {cache:'reload'});
         if (r.ok){
           const json = await r.json();
-          if (Array.isArray(json)) return json;
+          if (Array.isArray(json)) { console.log('Registros cargados:', json.length, 'desde', url); return json; }
         }
       }catch(_){}
     }
+    console.warn('No se pudo cargar dataset');
     return [];
   }
 
-  function searchIndex(index, qRaw){
-    const qTokens = tokenizeQuery(qRaw);
-    if (!qTokens.length){ render([],[]); return; }
-    // Separar tokens letra/serie (ts, mg, tr, wc...) y números
-    const seriesQ = new Set(qTokens.filter(t => isNaN(Number(t)) === true));
-    const numsQ   = new Set(qTokens.filter(t => /^\\d{2,6}$/.test(t)));
-    const setC = new Set(), setK = new Set();
-    for (const it of index){
-      // Regla: si la query trae serie (ts/mg/tr...), esa serie DEBE estar en tokens del índice
-      // y todos los números de la query DEBEN estar también.
-      let ok = true;
-      for (const s of seriesQ){ if (!it.tokens.has(s)) { ok=false; break; } }
-      if (!ok) continue;
-      for (const n of numsQ){ if (!it.tokens.has(n)) { ok=false; break; } }
-      if (!ok) continue;
-      // Si la query solo trae número (3350), pedimos que el número esté en tokens (compatibilidades)
-      if (!seriesQ.size && numsQ.size && !Array.from(numsQ).every(n=>it.tokens.has(n))) continue;
-      // Si la query no trae ni serie ni número (raro), no devolvemos nada.
-      if (!seriesQ.size && !numsQ.size) continue;
-
-      it.cons.forEach(x => x && setC.add(x));
-      it.cap.forEach(x => x && setK.add(x));
-    }
-    render(Array.from(setC), Array.from(setK));
-  }
-
   function render(consumibles, capacidades){
-    const toList = arr => arr.length ? '<ul>'+arr.map(v=>'<li>'+v.replace(/[&<>]/g, s=>({ '&':'&amp;','<':'&lt;','>':'&gt;' }[s]))+'</li>').join('')+'</ul>' : '—';
+    const toList = arr => arr.length ? '<ul>'+arr.map(v=>'<li>'+String(v).replace(/[&<>]/g, s=>({ '&':'&amp;','<':'&lt;','>':'&gt;' }[s]))+'</li>').join('')+'</ul>' : '—';
     outCons.innerHTML = toList(consumibles);
     outCap.innerHTML = toList(capacidades);
     cntCons.textContent = String(consumibles.length || 0);
@@ -179,14 +147,32 @@
   const DATA = await loadData();
   const INDEX = buildIndex(DATA);
 
+  function search(){
+    const {series: qs, nums: qn} = parseQuery(input.value);
+    if (!qs.size && !qn.size){ render([],[]); return; }
+    const setC = new Set(), setK = new Set();
+    for (const it of INDEX){
+      // si hay series en la query, deben estar todas
+      for (const s of qs){ if (!it.series.has(s)) { gotoNext: continue; } }
+      // si hay números en la query, deben estar todos
+      for (const n of qn){ if (!it.nums.has(n)) { gotoNext: continue; } }
+      // acumulamos
+      it.cons.forEach(x => x && setC.add(x));
+      it.cap.forEach(x => x && setK.add(x));
+      continue;
+      gotoNext:; // etiqueta para saltar al siguiente item si falla
+    }
+    render(Array.from(setC), Array.from(setK));
+  }
+
   const debounce = (fn,ms)=>{ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),ms) } };
-  const doSearch = ()=> searchIndex(INDEX, input.value);
-  input.addEventListener('input', debounce(doSearch, 150));
+  const doSearch = ()=> search();
+  input.addEventListener('input', debounce(doSearch, 160));
   input.addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); doSearch(); } });
   btnClear.addEventListener('click', ()=>{ input.value=''; render([],[]); input.focus(); });
   btnGoogle.addEventListener('click', ()=>{ const q=input.value.trim(); if(q) window.open('https://www.google.com/search?q='+encodeURIComponent(q),'_blank'); });
 
-  // ?q= inicial
+  // Búsqueda inicial si hay ?q=
   const qParam = new URL(location).searchParams.get('q');
   if (qParam){ input.value = qParam; }
   doSearch();
