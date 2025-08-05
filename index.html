@@ -1,156 +1,234 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <title>Buscador de Impresoras</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f2f2f2;
-            margin: 0;
-            padding: 0;
-            text-align: center;
-        }
-
-        h1 {
-            color: #003366;
-            margin-top: 30px;
-            font-size: 2.8em;
-            font-weight: bold;
-        }
-
-        .search-container {
-            margin: 20px auto;
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            max-width: 600px;
-        }
-
-        #searchInput {
-            padding: 12px;
-            font-size: 1em;
-            width: 100%;
-            border-radius: 10px;
-            border: 1px solid #ccc;
-        }
-
-        #clearButton, #googleButton {
-            padding: 12px 18px;
-            font-size: 1em;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-        }
-
-        #clearButton {
-            background-color: #ff6600;
-            color: white;
-        }
-
-        #googleButton {
-            background-color: #DB4437;
-            color: white;
-            margin-top: 15px;
-        }
-
-        .results {
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            padding: 20px;
-            margin-top: 20px;
-        }
-
-        .box {
-            background-color: white;
-            padding: 15px;
-            border-radius: 15px;
-            width: 30%;
-            min-height: 200px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-        }
-
-        .box h2 {
-            font-size: 1.2em;
-            color: #0074D9;
-            margin-bottom: 10px;
-        }
-
-        .box ul {
-            list-style: none;
-            padding: 0;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Buscador de Impresoras</title>
+  <style>
+    :root{
+      --bg:#f6f7fb;
+      --card:#ffffff;
+      --ink:#0f172a;
+      --muted:#6b7280;
+      --primary:#0d47a1;
+      --accent:#ff6d00;
+      --danger:#DB4437;
+      --border:#e5e7eb;
+      --shadow:0 10px 30px rgba(2,6,23,.08);
+      --radius:18px;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0}
+    body{
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial;
+      background:var(--bg);
+      color:var(--ink);
+    }
+    .wrap{max-width:1000px;margin:46px auto 64px;padding:0 16px}
+    h1{
+      margin:0 0 18px;
+      text-align:center;
+      font-size:clamp(28px,4.4vw,42px);
+      color:var(--primary);
+      font-weight:900;
+      letter-spacing:.4px;
+      text-transform:uppercase;
+    }
+    .sub{
+      text-align:center;
+      color:var(--muted);
+      margin-bottom:18px;
+      font-size:14px;
+    }
+    .searchbar{
+      display:flex;gap:10px;align-items:center;justify-content:center;
+      max-width:720px;margin:0 auto 20px;
+    }
+    .field{
+      flex:1;background:var(--card);border:1px solid var(--border);
+      border-radius:999px;padding:6px 14px;display:flex;align-items:center;
+      box-shadow:var(--shadow);
+    }
+    .field input{
+      width:100%;border:0;outline:0;background:transparent;
+      padding:10px 8px;font-size:16px;
+    }
+    .btn{
+      border:0;outline:0;border-radius:999px;padding:10px 16px;cursor:pointer;
+      font-weight:700;box-shadow:var(--shadow);transition:transform .06s ease, filter .06s ease;
+      white-space:nowrap;
+    }
+    .btn:active{transform:scale(.98)}
+    .btn-clean{background:var(--accent);color:#fff}
+    .grid{display:grid;gap:16px;margin-top:8px}
+    @media(min-width:860px){ .grid{grid-template-columns:1fr 1fr} }
+    .card{
+      background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+      box-shadow:var(--shadow);min-height:200px;display:flex;flex-direction:column;
+    }
+    .card header{
+      padding:12px 16px;border-bottom:1px solid var(--border)
+    }
+    .card header h2{
+      margin:0;font-size:16px;text-transform:uppercase;letter-spacing:.35px;color:#0b62d6
+    }
+    .body{padding:14px 16px 18px;line-height:1.45}
+    .empty{color:var(--muted);font-style:italic}
+    .list{margin:0;padding-left:18px}
+    .footer-actions{display:flex;justify-content:center;margin-top:18px}
+    .btn-google{background:var(--danger);color:#fff}
+    .hint{margin-top:10px;text-align:center;color:var(--muted);font-size:13px}
+    .badge{display:inline-block;margin-left:8px;font-size:12px;padding:2px 8px;border-radius:999px;background:#eef2ff;color:#334155}
+    .status{display:flex;gap:8px;align-items:center;justify-content:center;margin:6px 0 14px;color:var(--muted);font-size:13px}
+    .dot{width:8px;height:8px;border-radius:999px;background:#a3a3a3}
+    .error{color:#b91c1c;text-align:center;font-weight:600}
+    .capsule{display:inline-block;padding:2px 10px;border:1px solid var(--border);border-radius:999px;background:#fafafa;font-size:12px;margin-left:8px}
+  </style>
 </head>
 <body>
-    <h1>BUSCADOR DE IMPRESORAS</h1>
-    <div class="search-container">
-        <input type="text" id="searchInput" placeholder="Escribe modelo o cartucho...">
-        <button id="clearButton">Limpiar</button>
-    </div>
-    <div class="results">
-        <div class="box" id="consumiblesBox">
-            <h2>CONSUMIBLES</h2>
-            <ul id="consumiblesResults"></ul>
+  <main class="wrap">
+    <h1>Buscador de Impresoras</h1>
+    <p class="sub">Escribe un modelo (p. ej. <b>TS3350</b>, <b>TR 4751</b>, <b>4751</b>). Busca en <em>compatibilidades</em> y <em>descripción</em> (ignora mayúsculas y espacios).</p>
+
+    <section class="searchbar">
+      <div class="field" role="search" aria-label="Buscar por modelo o texto">
+        <input id="q" placeholder="Modelo o texto (TS3350, TR4751, 4751…)" autocomplete="off" />
+      </div>
+      <button id="clear" class="btn btn-clean">Limpiar</button>
+    </section>
+
+    <div id="status" class="status"><span class="dot"></span><span>Cargando datos…</span></div>
+    <div id="err" class="error" style="display:none"></div>
+
+    <section class="grid">
+      <article class="card" aria-live="polite">
+        <header><h2>Consumibles <span class="badge">columna B</span></h2></header>
+        <div class="body">
+          <ul id="consumibles" class="list"></ul>
+          <div id="consumiblesEmpty" class="empty">Sin resultados.</div>
         </div>
-        <div class="box" id="impresorasBox">
-            <h2>IMPRESORAS COMPATIBLES</h2>
-            <ul id="impresorasResults"></ul>
+      </article>
+
+      <article class="card" aria-live="polite">
+        <header><h2>Capacidad <span class="badge">columna C</span></h2></header>
+        <div class="body">
+          <ul id="capacidad" class="list"></ul>
+          <div id="capacidadEmpty" class="empty">Sin resultados.</div>
         </div>
+      </article>
+    </section>
+
+    <div class="footer-actions">
+      <button id="google" class="btn btn-google">Buscar en Google</button>
     </div>
-    <button id="googleButton">Buscar en Google</button>
+    <p class="hint">Sugerencia: prueba <span class="capsule">ts 3350</span> · <span class="capsule">tr4751</span> · <span class="capsule">4751</span></p>
+  </main>
 
-    <script>
-        let jsonData = [];
+  <script>
+    // ===== CONFIG =====
+    const DATA_URL = 'data_impresoras_v2.json'; // JSON esperado en la raíz del repo
 
-        async function loadData() {
-            const response = await fetch("dataset_impresoras_v2.json");
-            jsonData = await response.json();
+    // ===== UTILS =====
+    const $ = (sel) => document.querySelector(sel);
+    const byId = (id) => document.getElementById(id);
+    const normalize = (s='') => s.toString().toLowerCase().normalize('NFD')
+      .replace(/[\\u0300-\\u036f]/g,'').replace(/\\s+/g,'');
+
+    const uniquePush = (set, val) => { if (val != null && String(val).trim() !== '') set.add(String(val).trim()); };
+
+    // ===== DOM =====
+    const input = byId('q');
+    const btnClear = byId('clear');
+    const btnGoogle = byId('google');
+
+    const ulConsumibles = byId('consumibles');
+    const ulCapacidad = byId('capacidad');
+    const emptyConsumibles = byId('consumiblesEmpty');
+    const emptyCapacidad = byId('capacidadEmpty');
+    const statusBox = byId('status');
+    const errBox = byId('err');
+
+    let DATA = [];
+
+    // ===== LOAD =====
+    async function loadData(){
+      try{
+        const res = await fetch(DATA_URL, { cache: 'no-store' });
+        if(!res.ok) throw new Error('No se pudo cargar ' + DATA_URL + ' (' + res.status + ')');
+        DATA = await res.json();
+        statusBox.style.display = 'none';
+      }catch(err){
+        console.error(err);
+        statusBox.style.display = 'none';
+        errBox.style.display = 'block';
+        errBox.textContent = 'Error cargando el dataset. Revisa el nombre y ubicación del JSON.';
+      }
+    }
+
+    // ===== RENDER =====
+    function renderLists(consumiblesArr, capacidadArr){
+      // Consumibles
+      if(consumiblesArr.length){
+        ulConsumibles.innerHTML = consumiblesArr.map(v => '<li>'+v+'</li>').join('');
+        emptyConsumibles.style.display = 'none';
+      }else{
+        ulConsumibles.innerHTML = '';
+        emptyConsumibles.style.display = 'block';
+      }
+      // Capacidad
+      if(capacidadArr.length){
+        ulCapacidad.innerHTML = capacidadArr.map(v => '<li>'+v+'</li>').join('');
+        emptyCapacidad.style.display = 'none';
+      }else{
+        ulCapacidad.innerHTML = '';
+        emptyCapacidad.style.display = 'block';
+      }
+    }
+
+    // ===== SEARCH =====
+    function search(){
+      const q = normalize(input.value);
+      if(!q){ renderLists([],[]); return; }
+
+      const consumiblesSet = new Set();
+      const capacidadSet = new Set();
+
+      for(const row of DATA){
+        // Campos esperados en el JSON por fila:
+        // referencia, consumibles, capacidad, compatibilidades, descripcion
+        const inCompat = normalize(row.compatibilidades || '').includes(q);
+        const inDesc   = normalize(row.descripcion || '').includes(q);
+
+        if(inCompat || inDesc){
+          uniquePush(consumiblesSet, row.consumibles);
+          uniquePush(capacidadSet, row.capacidad);
         }
+      }
 
-        function normalize(str) {
-            return str.toLowerCase().replace(/\s+/g, '');
-        }
+      renderLists([...consumiblesSet], [...capacidadSet]);
+    }
 
-        function search() {
-            const input = document.getElementById("searchInput").value.trim().toLowerCase().replace(/\s+/g, '');
-            const consumibles = new Set();
-            const impresoras = new Set();
+    // ===== EVENTS =====
+    input.addEventListener('keydown', (e)=>{
+      if(e.key === 'Enter'){
+        e.preventDefault();
+        search();
+      }
+    });
 
-            jsonData.forEach(item => {
-                const desc = normalize(item.descripcion);
-                const comp = normalize(item.compatibilidades);
+    btnClear.addEventListener('click', ()=>{
+      input.value = '';
+      renderLists([],[]);
+      input.focus();
+    });
 
-                if (desc.includes(input) || comp.includes(input)) {
-                    if (item.descripcion) impresoras.add(item.descripcion);
-                    if (item.compatibilidades) consumibles.add(item.compatibilidades);
-                }
-            });
+    btnGoogle.addEventListener('click', ()=>{
+      const q = input.value.trim();
+      if(q) window.open('https://www.google.com/search?q=' + encodeURIComponent(q), '_blank');
+    });
 
-            document.getElementById("consumiblesResults").innerHTML = [...consumibles].map(x => `<li>${x}</li>`).join("");
-            document.getElementById("impresorasResults").innerHTML = [...impresoras].map(x => `<li>${x}</li>`).join("");
-        }
-
-        document.getElementById("clearButton").addEventListener("click", () => {
-            document.getElementById("searchInput").value = "";
-            document.getElementById("consumiblesResults").innerHTML = "";
-            document.getElementById("impresorasResults").innerHTML = "";
-        });
-
-        document.getElementById("googleButton").addEventListener("click", () => {
-            const query = document.getElementById("searchInput").value;
-            if (query) {
-                window.open(`https://www.google.com/search?q=${encodeURIComponent(query)}`, "_blank");
-            }
-        });
-
-        document.getElementById("searchInput").addEventListener("keypress", (e) => {
-            if (e.key === "Enter") search();
-        });
-
-        loadData();
-    </script>
+    // Init
+    loadData();
+  </script>
 </body>
 </html>
