@@ -43,7 +43,7 @@
 
     <div class="searchbar" role="search">
       <label for="q" class="sr-only">Modelo de impresora</label>
-      <input id="q" type="text" placeholder="Escribe modelo (p. ej. TS3350, TR 4751, 4751…)" autocomplete="off" aria-label="Buscar por modelo">
+      <input id="q" type="text" placeholder="Escribe modelo (p. ej. TS3350, TR 4751…)" autocomplete="off" aria-label="Buscar por modelo">
       <button id="clear" class="btn btn-clear" aria-label="Limpiar búsqueda">Limpiar</button>
     </div>
 
@@ -81,14 +81,13 @@
   const btnClear = $('#clear');
   const btnGoogle = $('#google');
 
-  // JSON en la MISMA carpeta que index.html
-  const DATASET_URL = './dataset_full_with_normalized_fields.json';
+  // JSON en la misma carpeta
+  const DATASET_URL = './dataset_impresoras_v2.json';
 
-  // ---- Utilidades ----
   const normalize = s => (s||'')
     .toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g,'') // sin acentos
-    .replace(/[^a-z0-9]+/g,' ')                      // todo a separadores simples
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9]+/g,' ')
     .replace(/\s+/g,' ')
     .trim();
 
@@ -102,7 +101,6 @@
   };
 
   const SEP = /\s*[;,/|]\s*/;
-
   const coll = new Intl.Collator('es', {numeric:true, sensitivity:'base'});
   const naturalSort = arr => arr.sort(coll.compare);
 
@@ -141,7 +139,6 @@
   }
 
   function renderResults(consumibles, capacidades){
-    // Orden + agrupación
     const consSorted = naturalSort(consumibles.slice());
     const capNorm = capacidades.map(normalizeCap);
     const capSorted = naturalSort(capNorm);
@@ -159,7 +156,6 @@
     cntCap.textContent  = capSorted.length ? String(capSorted.length)  : '0';
   }
 
-  // ---- Web Worker para índice y búsqueda ----
   const workerCode = `
     const SEP = /\\s*[;,\\/|]\\s*/;
     const normalize = s => (s||'')
@@ -211,17 +207,13 @@
     };
   `;
   const worker = new Worker(URL.createObjectURL(new Blob([workerCode], {type:'text/javascript'})));
-
   let workerReady = false;
   worker.onmessage = (e)=>{
     const {type, consumibles, capacidades} = e.data || {};
     if (type === 'ready'){ workerReady = true; if (input.value.trim()) search(); return; }
-    if (type === 'result'){
-      renderResults(consumibles||[], capacidades||[]);
-    }
+    if (type === 'result'){ renderResults(consumibles||[], capacidades||[]); }
   };
 
-  // ---- Carga de datos con caché local como fallback ----
   async function loadData() {
     const key = 'dataset_cache_v1';
     try {
@@ -236,12 +228,11 @@
         try {
           const json = JSON.parse(cached);
           if (Array.isArray(json)) worker.postMessage({type:'build', payload: json});
-        } catch(_) {/* silencio */}
+        } catch(_) {}
       }
     }
   }
 
-  // ---- Búsqueda ----
   const doSearch = ()=> {
     const raw = input.value.trim();
     if (!raw || !workerReady){ renderEmpty(); return; }
@@ -249,7 +240,6 @@
   };
   const search = debounce(doSearch, 180);
 
-  // ---- Sincroniza URL (?q=) ----
   function syncURL(){
     const v = input.value.trim();
     const url = new URL(location);
@@ -258,7 +248,6 @@
   }
   const syncURLdebounced = debounce(syncURL, 180);
 
-  // ---- Eventos ----
   btnClear.addEventListener('click', () => { input.value=''; syncURL(); renderEmpty(); input.focus(); });
   input.addEventListener('input', () => { search(); syncURLdebounced(); });
   input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doSearch(); } });
@@ -274,7 +263,6 @@
     window.open('https://www.google.com/search?q='+encodeURIComponent(queries.join(' OR ')),'_blank');
   });
 
-  // ---- Init ----
   function bootFromURL(){
     const q = new URL(location).searchParams.get('q');
     if (q) input.value = q;
