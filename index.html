@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Buscador de Impresoras</title>
+  <title>Buscador de Impresoras — Genérico</title>
   <style>
     :root{
       --blue:#0b63c8; --blue-2:#0f5ab0; --accent:#ff6a00;
@@ -35,7 +35,7 @@
   <div class="wrap">
     <h1>BUSCADOR DE IMPRESORAS</h1>
     <div class="searchbar" role="search">
-      <input id="q" type="text" placeholder="mg 2100, ts3350, mx 4250, deskjet 3747, f2140…" autocomplete="off">
+      <input id="q" type="text" placeholder="Ej: mx 4250, ts3350, deskjet 3747, f2140, lxi 37, cl541..." autocomplete="off">
       <button id="clear" class="btn btn-clear">Limpiar</button>
     </div>
     <div class="grid">
@@ -63,17 +63,14 @@
   const btnClear = $('#clear');
   const btnGoogle = $('#google');
 
-  // 1) local 2) RAW GitHub (fallback)
   const DATASET_URLS = [
     './dataset_impresoras_v2.json',
     'https://raw.githubusercontent.com/guiradimar/MODELO-IMPRESORA.MC/main/dataset_impresoras_v2.json'
   ];
 
   const normalize = s => (s||'').toLowerCase()
-    // separa tags y caracteres raros
     .replace(/[<>\\[\\](){}]/g,' ')
     .normalize('NFD').replace(/[\\u0300-\\u036f]/g,'')
-    // normaliza nombres de series
     .replace(/desk\\s*jet/g, 'deskjet')
     .replace(/laser\\s*jet/g, 'laserjet')
     .replace(/office\\s*jet/g, 'officejet')
@@ -82,41 +79,51 @@
     .replace(/pixma\\s*mg/g, 'mg')
     .replace(/pixma\\s*mx/g, 'mx')
     .replace(/pixma\\s*tr/g, 'tr')
-    // reduce todo a tokens alfanuméricos
-    .replace(/[^a-z0-9]+/g,' ')
+    .replace(/\\s+/g,' ')
     .trim();
 
   function firstOf(obj, keys){
     for (const k of keys){
       if (obj && obj[k] != null && obj[k] !== '') return String(obj[k]);
-      const K = k && k.toUpperCase && k.toUpperCase();
-      if (K && obj && obj[K] != null && obj[K] !== '') return String(obj[K]);
+      const K = k.toUpperCase ? k.toUpperCase() : k;
+      if (obj && obj[K] != null && obj[K] !== '') return String(obj[K]);
     }
     return '';
   }
 
-  // Tokeniza SOLO compatibilidades -> set de series + números
-  function tokensFromCompat(compatRaw){
-    const n = normalize(compatRaw);
-    const toks = new Set(n.split(' ').filter(Boolean));
-    // además, añade números detectados explícitamente (por si hay pegados a letras)
-    const nums = n.match(/\\b\\d{2,6}\\b/g) || [];
-    nums.forEach(x => toks.add(x));
-    return toks;
+  // Extract pairs "letters + number" from a string.
+  // Also map context tags (<...>) like ts/mg/mx/tr/deskjet etc to influence pairs.
+  const SERIES_HINTS = ['ts','mg','mx','tr','deskjet','dj','lj','oj','wc','lxi','cl','mfc','bizhub','stylus','et','z'];
+  function extractPairs(text){
+    const n = ' ' + normalize(text) + ' ';
+    const pairs = new Set();
+
+    // capture explicit alphanum tokens: lxi-37xl -> (lxi,37), cl541 -> (cl,541), mx60gl -> (mx,60)
+    const alnum = /\\b([a-z]{1,6})[-_ ]*(\\d{1,6})([a-z]{0,3})\\b/g;
+    let m;
+    while ((m = alnum.exec(n))){
+      const serie = m[1];
+      const num = m[2];
+      pairs.add(serie + ':' + num);
+    }
+
+    // capture numbers in context of series hints appearing nearby (e.g., "mx> 4250, 4240, 4255")
+    for (const serie of SERIES_HINTS){
+      if (n.includes(' ' + serie + ' ')){
+        const nums = n.match(/\\b\\d{1,6}\\b/g) || [];
+        for (const num of nums) pairs.add(serie + ':' + num);
+      }
+    }
+    return pairs;
   }
 
-  // Parseo de la query: exige serie + número (junto o separado)
-  const SERIES = ['mg','mx','ts','tr','deskjet','dj','lj','f','oj','wc'];
   function parseQuery(q){
     const n = normalize(q);
     if (!n) return null;
-    // casos pegados tipo ts3350, f2140, dj3747
-    const m1 = n.match(/^(mg|mx|ts|tr|deskjet|dj|lj|f|oj|wc)(\\d{2,6})$/);
-    if (m1) return {serie:m1[1], num:m1[2]};
-    // casos separados: 'ts 3350'
-    const m2 = n.match(/^(mg|mx|ts|tr|deskjet|dj|lj|f|oj|wc)\\s+(\\d{2,6})$/);
-    if (m2) return {serie:m2[1], num:m2[2]};
-    return null;
+    // letters+number (joined or spaced)
+    let m = n.match(/\\b([a-z]{1,6})\\s*(\\d{1,6})\\b/);
+    if (!m) return null;
+    return {serie:m[1], num:m[2]};
   }
 
   async function loadData(){
@@ -132,15 +139,14 @@
     return [];
   }
 
-  let DATA = [];
-  let INDEX = []; // {toks:Set, cons:string[], cap:string[]}
+  let INDEX = [];
   loadData().then(rows => {
-    DATA = rows || [];
-    INDEX = DATA.map(r => ({
-      toks: tokensFromCompat(firstOf(r, ['compatibilidades','compatibilidad'])),
-      cons: (firstOf(r, ['consumibles','cartucho','consumible'])||'').split(/\\s*[;,\\/|]\\s*/).filter(Boolean),
-      cap:  (firstOf(r, ['capacidad','cap'])||'').split(/\\s*[;,\\/|]\\s*/).filter(Boolean)
-    }));
+    INDEX = (rows||[]).map(r => {
+      const compat = firstOf(r, ['compatibilidades','compatibilidad']);
+      const cons = (firstOf(r, ['consumibles','cartucho','consumible'])||'').split(/\\s*[;,\\/|]\\s*/).filter(Boolean);
+      const cap  = (firstOf(r, ['capacidad','cap'])||'').split(/\\s*[;,\\/|]\\s*/).filter(Boolean);
+      return {pairs: extractPairs(compat), cons, cap};
+    });
   });
 
   function render(cons, cap){
@@ -156,9 +162,10 @@
   function search(){
     const q = parseQuery(input.value);
     if (!q){ render([],[]); return; }
+    const key = q.serie + ':' + q.num;
     const setC = new Set(), setK = new Set();
     for (const it of INDEX){
-      if (it.toks.has(q.serie) && it.toks.has(q.num)){
+      if (it.pairs.has(key)){
         it.cons.forEach(x => setC.add(x));
         it.cap.forEach(x => setK.add(x));
       }
