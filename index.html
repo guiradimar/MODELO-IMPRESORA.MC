@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Buscador de Impresoras — Genérico</title>
+  <title>Buscador de Impresoras — Serie + Número</title>
   <style>
     :root{
       --blue:#0b63c8; --blue-2:#0f5ab0; --accent:#ff6a00;
@@ -35,7 +35,7 @@
   <div class="wrap">
     <h1>BUSCADOR DE IMPRESORAS</h1>
     <div class="searchbar" role="search">
-      <input id="q" type="text" placeholder="Ej: mx 4250, ts3350, deskjet 3747, f2140, lxi 37, cl541..." autocomplete="off">
+      <input id="q" type="text" placeholder="Ej: mx 4250, ts3350, f2140, deskjet 3747, lxi 37, cl541..." autocomplete="off">
       <button id="clear" class="btn btn-clear">Limpiar</button>
     </div>
     <div class="grid">
@@ -63,22 +63,38 @@
   const btnClear = $('#clear');
   const btnGoogle = $('#google');
 
+  // 1) local 2) RAW GitHub (fallback)
   const DATASET_URLS = [
     './dataset_impresoras_v2.json',
     'https://raw.githubusercontent.com/guiradimar/MODELO-IMPRESORA.MC/main/dataset_impresoras_v2.json'
   ];
 
+  // Canonical map for tags/series hints → canonical key
+  const SERIES_MAP = [
+    ['pixma\\s*ts', 'ts'],
+    ['pixma\\s*mg', 'mg'],
+    ['pixma\\s*mx', 'mx'],
+    ['pixma\\s*tr', 'tr'],
+    ['desk\\s*jet', 'deskjet'],
+    ['laser\\s*jet', 'laserjet'],
+    ['office\\s*jet', 'officejet'],
+    ['work\\s*cent(re|er)', 'workcentre'],
+    ['stylus', 'stylus'],
+    ['bizhub', 'bizhub'],
+    ['mfc', 'mfc'],
+    ['ecotank|eco\\s*tank|\\bet\\b', 'et'],
+    // generic one-letter/few-letters series often used in compat lists:
+    ['\\bf\\b', 'f'],
+    ['\\blxi\\b', 'lxi'],
+    ['\\bcl\\b', 'cl'],
+    ['\\bmx\\b', 'mx'],
+    ['\\bts\\b', 'ts'],
+    ['\\bmg\\b', 'mg']
+  ];
+
   const normalize = s => (s||'').toLowerCase()
-    .replace(/[<>\\[\\](){}]/g,' ')
+    .replace(/[<>\\[\\](){}]/g,' ') // drop tags
     .normalize('NFD').replace(/[\\u0300-\\u036f]/g,'')
-    .replace(/desk\\s*jet/g, 'deskjet')
-    .replace(/laser\\s*jet/g, 'laserjet')
-    .replace(/office\\s*jet/g, 'officejet')
-    .replace(/work\\s*cent(re|er)/g, 'workcentre')
-    .replace(/pixma\\s*ts/g, 'ts')
-    .replace(/pixma\\s*mg/g, 'mg')
-    .replace(/pixma\\s*mx/g, 'mx')
-    .replace(/pixma\\s*tr/g, 'tr')
     .replace(/\\s+/g,' ')
     .trim();
 
@@ -91,37 +107,69 @@
     return '';
   }
 
-  // Extract pairs "letters + number" from a string.
-  // Also map context tags (<...>) like ts/mg/mx/tr/deskjet etc to influence pairs.
-  const SERIES_HINTS = ['ts','mg','mx','tr','deskjet','dj','lj','oj','wc','lxi','cl','mfc','bizhub','stylus','et','z'];
-  function extractPairs(text){
-    const n = ' ' + normalize(text) + ' ';
-    const pairs = new Set();
-
-    // capture explicit alphanum tokens: lxi-37xl -> (lxi,37), cl541 -> (cl,541), mx60gl -> (mx,60)
-    const alnum = /\\b([a-z]{1,6})[-_ ]*(\\d{1,6})([a-z]{0,3})\\b/g;
-    let m;
-    while ((m = alnum.exec(n))){
-      const serie = m[1];
-      const num = m[2];
-      pairs.add(serie + ':' + num);
+  // Insert markers |ser:KEY| in the text for each known tag/series phrase.
+  function markSeries(text){
+    let n = ' ' + normalize(text) + ' ';
+    for (const [pattern, key] of SERIES_MAP){
+      const re = new RegExp(pattern, 'g');
+      n = n.replace(re, ` |ser:${key}| `);
     }
+    return n;
+  }
 
-    // capture numbers in context of series hints appearing nearby (e.g., "mx> 4250, 4240, 4255")
-    for (const serie of SERIES_HINTS){
-      if (n.includes(' ' + serie + ' ')){
-        const nums = n.match(/\\b\\d{1,6}\\b/g) || [];
-        for (const num of nums) pairs.add(serie + ':' + num);
+  // Build set of pairs "serie:num" from a compat string
+  function extractPairs(compatRaw){
+    const marked = markSeries(compatRaw);
+    const parts = marked.split('|');
+    const pairs = new Set();
+    let currentSeries = new Set();
+
+    const pushNums = (nums, serSet) => {
+      nums.forEach(num => {
+        if (!num) return;
+        if (serSet.size) {
+          serSet.forEach(s => pairs.add(`${s}:${num}`));
+        }
+      });
+    };
+
+    for (let i=0;i<parts.length;i++){
+      const tok = parts[i].trim();
+      if (!tok) continue;
+
+      if (tok.startsWith('ser:')){
+        // switch context (reset, then add this series)
+        currentSeries = new Set([tok.slice(4)]);
+        continue;
+      }
+
+      const segment = tok;
+
+      // 1) explicit alphanum tokens inside segment: e.g., f2140, mx60gl, wc7425rl, cl541
+      const alnum = segment.match(/\\b([a-z]{1,6})[-_ ]*(\\d{1,6})([a-z]{0,3})\\b/g) || [];
+      for (const a of alnum){
+        const m = a.match(/\\b([a-z]{1,6})[-_ ]*(\\d{1,6})/);
+        if (m){
+          const ser = m[1];
+          const num = m[2];
+          pairs.add(`${ser}:${num}`);
+        }
+      }
+
+      // 2) if we have a current series context from a tag (e.g., <pixma mx>), pair all standalone numbers
+      if (currentSeries.size){
+        const nums = segment.match(/\\b\\d{1,6}\\b/g) || [];
+        pushNums(nums, currentSeries);
       }
     }
     return pairs;
   }
 
+  // Parse user query: require letters+number (together or spaced)
   function parseQuery(q){
     const n = normalize(q);
     if (!n) return null;
-    // letters+number (joined or spaced)
-    let m = n.match(/\\b([a-z]{1,6})\\s*(\\d{1,6})\\b/);
+    const m = n.match(/\\b([a-z]{1,8})\\s*(\\d{1,6})\\b/);
     if (!m) return null;
     return {serie:m[1], num:m[2]};
   }
@@ -162,7 +210,7 @@
   function search(){
     const q = parseQuery(input.value);
     if (!q){ render([],[]); return; }
-    const key = q.serie + ':' + q.num;
+    const key = `${q.serie}:${q.num}`;
     const setC = new Set(), setK = new Set();
     for (const it of INDEX){
       if (it.pairs.has(key)){
