@@ -35,7 +35,7 @@
   <div class="wrap">
     <h1>BUSCADOR DE IMPRESORAS</h1>
     <div class="searchbar" role="search">
-      <input id="q" type="text" placeholder="Ej: mg 2100, ts3350, deskjet 3747, f2140" autocomplete="off">
+      <input id="q" type="text" placeholder="mg 2100, ts3350, mx 4250, deskjet 3747, f2140…" autocomplete="off">
       <button id="clear" class="btn btn-clear">Limpiar</button>
     </div>
     <div class="grid">
@@ -53,7 +53,7 @@
   </div>
 
 <script>
-(async () => {
+(() => {
   const $ = sel => document.querySelector(sel);
   const input = $('#q');
   const outCons = $('#consumibles');
@@ -63,36 +63,60 @@
   const btnClear = $('#clear');
   const btnGoogle = $('#google');
 
+  // 1) local 2) RAW GitHub (fallback)
   const DATASET_URLS = [
     './dataset_impresoras_v2.json',
     'https://raw.githubusercontent.com/guiradimar/MODELO-IMPRESORA.MC/main/dataset_impresoras_v2.json'
   ];
 
   const normalize = s => (s||'').toLowerCase()
+    // separa tags y caracteres raros
+    .replace(/[<>\\[\\](){}]/g,' ')
     .normalize('NFD').replace(/[\\u0300-\\u036f]/g,'')
+    // normaliza nombres de series
+    .replace(/desk\\s*jet/g, 'deskjet')
+    .replace(/laser\\s*jet/g, 'laserjet')
+    .replace(/office\\s*jet/g, 'officejet')
+    .replace(/work\\s*cent(re|er)/g, 'workcentre')
+    .replace(/pixma\\s*ts/g, 'ts')
+    .replace(/pixma\\s*mg/g, 'mg')
+    .replace(/pixma\\s*mx/g, 'mx')
+    .replace(/pixma\\s*tr/g, 'tr')
+    // reduce todo a tokens alfanuméricos
     .replace(/[^a-z0-9]+/g,' ')
     .trim();
 
   function firstOf(obj, keys){
     for (const k of keys){
       if (obj && obj[k] != null && obj[k] !== '') return String(obj[k]);
+      const K = k && k.toUpperCase && k.toUpperCase();
+      if (K && obj && obj[K] != null && obj[K] !== '') return String(obj[K]);
     }
     return '';
   }
 
-  const seriesList = ['mg','mx','ts','tr','deskjet','dj','lj','f'];
-
-  function parseQuery(q){
-    const nq = normalize(q);
-    const match = nq.match(/^(mg|mx|ts|tr|deskjet|dj|lj|f)\\s*(\\d{2,6})$/);
-    if (!match) return null;
-    return {serie: match[1], num: match[2]};
+  // Tokeniza SOLO compatibilidades -> set de series + números
+  function tokensFromCompat(compatRaw){
+    const n = normalize(compatRaw);
+    const toks = new Set(n.split(' ').filter(Boolean));
+    // además, añade números detectados explícitamente (por si hay pegados a letras)
+    const nums = n.match(/\\b\\d{2,6}\\b/g) || [];
+    nums.forEach(x => toks.add(x));
+    return toks;
   }
 
-  function matchCompat(compat, serie, num){
-    const nc = normalize(compat);
-    const regex = new RegExp(`\\b${serie}\\s*${num}\\b`);
-    return regex.test(nc);
+  // Parseo de la query: exige serie + número (junto o separado)
+  const SERIES = ['mg','mx','ts','tr','deskjet','dj','lj','f','oj','wc'];
+  function parseQuery(q){
+    const n = normalize(q);
+    if (!n) return null;
+    // casos pegados tipo ts3350, f2140, dj3747
+    const m1 = n.match(/^(mg|mx|ts|tr|deskjet|dj|lj|f|oj|wc)(\\d{2,6})$/);
+    if (m1) return {serie:m1[1], num:m1[2]};
+    // casos separados: 'ts 3350'
+    const m2 = n.match(/^(mg|mx|ts|tr|deskjet|dj|lj|f|oj|wc)\\s+(\\d{2,6})$/);
+    if (m2) return {serie:m2[1], num:m2[2]};
+    return null;
   }
 
   async function loadData(){
@@ -108,36 +132,43 @@
     return [];
   }
 
-  const DATA = await loadData();
+  let DATA = [];
+  let INDEX = []; // {toks:Set, cons:string[], cap:string[]}
+  loadData().then(rows => {
+    DATA = rows || [];
+    INDEX = DATA.map(r => ({
+      toks: tokensFromCompat(firstOf(r, ['compatibilidades','compatibilidad'])),
+      cons: (firstOf(r, ['consumibles','cartucho','consumible'])||'').split(/\\s*[;,\\/|]\\s*/).filter(Boolean),
+      cap:  (firstOf(r, ['capacidad','cap'])||'').split(/\\s*[;,\\/|]\\s*/).filter(Boolean)
+    }));
+  });
 
   function render(cons, cap){
-    const toList = arr => arr.length ? '<ul>'+arr.map(v=>'<li>'+v+'</li>').join('')+'</ul>' : '—';
+    const toList = arr => arr.length ? '<ul>'+arr.map(v=>'<li>'+escapeHtml(v)+'</li>').join('')+'</ul>' : '—';
     outCons.innerHTML = toList(cons);
     outCap.innerHTML = toList(cap);
     cntCons.textContent = cons.length || 0;
     cntCap.textContent = cap.length || 0;
   }
 
+  function escapeHtml(s){ return String(s).replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
+
   function search(){
-    const parsed = parseQuery(input.value);
-    if (!parsed){ render([],[]); return; }
+    const q = parseQuery(input.value);
+    if (!q){ render([],[]); return; }
     const setC = new Set(), setK = new Set();
-    for (const row of DATA){
-      const compat = firstOf(row, ['compatibilidades','compatibilidad']);
-      if (matchCompat(compat, parsed.serie, parsed.num)){
-        const cons = firstOf(row, ['consumibles','cartucho','consumible']);
-        const cap  = firstOf(row, ['capacidad','cap']);
-        if (cons) setC.add(cons);
-        if (cap)  setK.add(cap);
+    for (const it of INDEX){
+      if (it.toks.has(q.serie) && it.toks.has(q.num)){
+        it.cons.forEach(x => setC.add(x));
+        it.cap.forEach(x => setK.add(x));
       }
     }
     render(Array.from(setC), Array.from(setK));
   }
 
-  input.addEventListener('input', () => search());
+  input.addEventListener('input', search);
   btnClear.addEventListener('click', ()=>{ input.value=''; render([],[]); input.focus(); });
-  btnGoogle.addEventListener('click', ()=>{ const q=input.value.trim(); if(q) window.open('https://www.google.com/search?q='+encodeURIComponent(q),'_blank'); });
-
+  btnGoogle.addEventListener('click', ()=>{ const v=input.value.trim(); if(v) window.open('https://www.google.com/search?q='+encodeURIComponent(v),'_blank'); });
 })();
 </script>
 </body>
