@@ -2,234 +2,287 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Buscador de Impresoras</title>
   <style>
     :root{
-      --primary:#0f4c81;
-      --accent:#ff6a00;
-      --bg:#f5f7fb;
-      --panel:#ffffff;
-      --text:#1b2b3a;
-      --muted:#7a8aa0;
-      --ok:#10893e;
-      --danger:#cc2936;
-      --shadow: 0 10px 25px rgba(16,33,54,.08);
+      --blue:#0b63c8; --blue-2:#0f5ab0; --accent:#ff6a00;
+      --bg:#f4f6fa; --card:#ffffff; --muted:#6b7280;
+      --shadow: 0 10px 24px rgba(0,0,0,.08); --radius:18px;
     }
     *{box-sizing:border-box}
-    html,body{height:100%}
-    body{
-      margin:0;
-      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
-      background: var(--bg);
-      color: var(--text);
-      display:flex; flex-direction:column;
+    body{ margin:0; font-family:ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      background:var(--bg); color:#0f172a;}
+    .wrap{max-width:1100px;margin:0 auto;padding:42px 20px 80px}
+    h1{margin:0 0 20px;text-align:center;font-size:clamp(28px,4vw,46px);letter-spacing:.5px;color:var(--blue);font-weight:800}
+    .searchbar{display:flex;gap:12px;justify-content:center;margin:10px auto 18px;max-width:860px}
+    .searchbar input{
+      flex:1;min-width:300px;background:#fff;border:1px solid #e5e7eb;border-radius:14px;
+      padding:14px 16px;font-size:16px;outline:none;box-shadow:var(--shadow);
     }
-    header{
-      padding:28px 16px 12px;
-      text-align:center;
-    }
-    h1{
-      margin:0;
-      letter-spacing:.02em;
-      color:var(--primary);
-      font-weight:800;
-      font-size: clamp(28px, 4vw, 42px);
-      text-transform:uppercase;
-    }
-    .search-wrap{
-      display:flex; gap:10px; justify-content:center; align-items:center;
-      margin:18px auto 8px; padding:0 16px; width: min(980px, 94%);
-    }
-    .search{
-      flex:1; display:flex; align-items:center; background:#fff; border-radius:12px;
-      box-shadow: var(--shadow);
-      padding:6px 10px;
-      border:1px solid #e7eaf0;
-    }
-    .search input{
-      width:100%; border:none; outline:none; font-size:16px; padding:12px 10px;
-      background:transparent;
-    }
-    .btn{
-      border:none; outline:none; cursor:pointer;
-      padding:12px 16px; border-radius:10px; font-weight:600; font-size:15px;
-      transition:transform .06s ease, filter .06s ease;
-    }
-    .btn:active{transform:translateY(1px)}
-    .btn-clean{ background: var(--accent); color:#fff; }
-    .btn-google{ background:#e53935; color:#fff; display:block; margin:18px auto 6px; }
-    .btn-google:hover{ filter:brightness(1.05) }
-    .grid{
-      width:min(1100px, 96%); margin:14px auto 0; display:grid; gap:20px;
-      grid-template-columns: 1fr; 
-    }
-    @media (min-width: 880px){
-      .grid{ grid-template-columns: 1fr 1fr; }
-    }
-    .card{
-      background:var(--panel); border-radius:16px; box-shadow: var(--shadow);
-      border:1px solid #e8edf5; overflow:hidden;
-    }
-    .card header{
-      text-align:left; padding:14px 18px; background: linear-gradient(180deg, #f8fbff, #fff);
-      border-bottom:1px solid #eef2f8;
-    }
-    .card h2{
-      margin:0; font-size:18px; letter-spacing:.02em; color:#0b5fb6;
-      text-transform:uppercase;
-    }
-    .card .content{
-      padding:16px 18px; min-height:230px;
-    }
-    .muted{ color:var(--muted); font-style:italic; }
-    .pill{
-      display:inline-block; background:#eef5ff; color:#0b5fb6; padding:6px 10px; border-radius:999px;
-      font-weight:600; font-size:12px; letter-spacing:.02em; margin-right:8px;
-    }
-    .error{
-      text-align:center; color:var(--danger); font-weight:700; margin-top:6px;
-      min-height:22px;
-    }
-    ul{ margin:0; padding-left:18px; }
-    li{ margin:6px 0; }
-    footer{
-      margin-top:auto; padding:14px; text-align:center; color:var(--muted); font-size:13px;
-    }
+    .btn{border:0;border-radius:12px;padding:12px 18px;font-weight:700;cursor:pointer;transition:.18s transform ease;box-shadow:var(--shadow)}
+    .btn:active{transform:scale(.98)}
+    .btn-clear{background:var(--accent);color:#fff;}
+    .btn-google{display:block;margin:22px auto 0;background:#d93025;color:#fff}
+    .grid{display:grid;gap:22px;grid-template-columns:1fr;margin-top:8px}
+    @media (min-width:900px){ .grid{grid-template-columns:1fr 1fr;} }
+    .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;border:1px solid #eef2f7}
+    .card header{padding:16px 18px;background:linear-gradient(0deg,#fafcff, #ffffff);border-bottom:1px solid #eef2f7;font-weight:800;color:var(--blue-2);display:flex;justify-content:space-between;align-items:center}
+    .count{color:#64748b;font-weight:700;font-size:14px}
+    .card .body{padding:18px;min-height:220px;color:#111827;line-height:1.45}
+    .muted{color:var(--muted);font-style:italic}
+    .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+    ul{margin:0;padding-left:18px}
+    li{margin:.3rem 0}
+    footer{margin-top:32px;text-align:center;color:#94a3b8;font-size:12px}
   </style>
 </head>
 <body>
-  <header>
-    <h1>Buscador de Impresoras</h1>
-    <div class="search-wrap">
-      <div class="search" role="search">
-        <input id="q" type="text" placeholder="Escribe modelo o cartucho… (p.ej. TS3350, TR4751, 4751…)" autocomplete="off" />
-      </div>
-      <button id="clearBtn" class="btn btn-clean" title="Limpiar">Limpiar</button>
+  <div class="wrap">
+    <h1>BUSCADOR DE IMPRESORAS</h1>
+
+    <div class="searchbar" role="search">
+      <label for="q" class="sr-only">Modelo de impresora</label>
+      <input id="q" type="text" placeholder="Escribe modelo (p. ej. TS3350, TR 4751, 4751…)" autocomplete="off" aria-label="Buscar por modelo">
+      <button id="clear" class="btn btn-clear" aria-label="Limpiar búsqueda">Limpiar</button>
     </div>
-    <div id="errorBox" class="error" aria-live="polite"></div>
-  </header>
 
-  <main class="grid" aria-live="polite">
-    <section class="card" aria-labelledby="h-cons">
-      <header><h2 id="h-cons">Consumibles</h2></header>
-      <div class="content" id="consBox"><p class="muted">Sin resultados.</p></div>
-    </section>
+    <div class="grid">
+      <section class="card" aria-labelledby="h-consumibles">
+        <header>
+          <span id="h-consumibles">CONSUMIBLES</span>
+          <span id="count-cons" class="count">—</span>
+        </header>
+        <div id="consumibles" class="body" aria-live="polite" role="status">—</div>
+      </section>
 
-    <section class="card" aria-labelledby="h-cap">
-      <header><h2 id="h-cap">Capacidad</h2></header>
-      <div class="content" id="capBox"><p class="muted">Sin resultados.</p></div>
-    </section>
-  </main>
+      <section class="card" aria-labelledby="h-capacidad">
+        <header>
+          <span id="h-capacidad">CAPACIDAD</span>
+          <span id="count-cap" class="count">—</span>
+        </header>
+        <div id="capacidad" class="body" aria-live="polite" role="status">—</div>
+      </section>
+    </div>
 
-  <button id="googleBtn" class="btn btn-google">Buscar en Google</button>
+    <button id="google" class="btn btn-google" aria-label="Buscar este modelo en Google">Buscar en Google</button>
 
-  <footer>© <span id="year"></span> — Buscador de consumibles y capacidades</footer>
+    <footer>© 2025 — Buscador de consumibles y capacidades</footer>
+  </div>
 
-  <script>
-    // === Ajusta SOLO este nombre si cambias el JSON ===
-    const DATA_URL = 'data_impresoras_v2.json';
-    // ================================================
+<script>
+(() => {
+  const $ = sel => document.querySelector(sel);
+  const input = $('#q');
+  const outCons = $('#consumibles');
+  const outCap = $('#capacidad');
+  const cntCons = $('#count-cons');
+  const cntCap = $('#count-cap');
+  const btnClear = $('#clear');
+  const btnGoogle = $('#google');
 
-    let DATA = [];
-    const $ = (sel)=>document.querySelector(sel);
-    const $$ = (sel)=>document.querySelectorAll(sel);
-    const qInput = $('#q');
-    const errorBox = $('#errorBox');
-    const consBox = $('#consBox');
-    const capBox = $('#capBox');
-    const clearBtn = $('#clearBtn');
-    const googleBtn = $('#googleBtn');
-    $('#year').textContent = new Date().getFullYear();
+  // JSON en la MISMA carpeta que index.html
+  const DATASET_URL = './dataset_full_with_normalized_fields.json';
 
-    // Normaliza texto: minúsculas, sin espacios ni guiones
-    const normalize = (s='') => s.toString().toLowerCase()
-      .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-      .replace(/[\s\-_.,/]+/g,'')
+  // ---- Utilidades ----
+  const normalize = s => (s||'')
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'') // sin acentos
+    .replace(/[^a-z0-9]+/g,' ')                      // todo a separadores simples
+    .replace(/\s+/g,' ')
+    .trim();
+
+  const firstOf = (obj, keys) => {
+    for (const k of keys) {
+      if (obj && obj[k] != null && obj[k] !== '') return String(obj[k]);
+      const K = k.toUpperCase();
+      if (obj && obj[K] != null && obj[K] !== '') return String(obj[K]);
+    }
+    return '';
+  };
+
+  const SEP = /\s*[;,/|]\s*/;
+
+  const coll = new Intl.Collator('es', {numeric:true, sensitivity:'base'});
+  const naturalSort = arr => arr.sort(coll.compare);
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
+
+  function groupConsumibles(list){
+    const map = new Map();
+    for (const x of list){
+      const base = x.replace(/\b(XL|XXL)\b/ig,'').replace(/\s+/g,' ').trim();
+      if (!map.has(base)) map.set(base, new Set());
+      map.get(base).add(x);
+    }
+    return Array.from(map.entries()).map(([base,set])=>({base, variantes: naturalSort(Array.from(set))}));
+  }
+
+  function normalizeCap(v){
+    const txt = String(v).trim();
+    const m = txt.match(/(\d+(?:[.,]\d+)?)\s*(ml|pag|pags|pág|páginas)?/i);
+    if (!m) return txt;
+    let num = parseFloat(m[1].replace(',','.'));
+    const unit = (m[2]||'').toLowerCase();
+    if (unit.startsWith('pag') || unit.startsWith('pág')) return `${Math.round(num)} páginas`;
+    if (!unit) return String(num);
+    return `${num} ml`;
+  }
+
+  const debounce = (fn,ms)=>{let t;return (...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms)}};
+
+  function renderEmpty(){
+    outCons.textContent = '—';
+    outCap.textContent = '—';
+    cntCons.textContent = '—';
+    cntCap.textContent = '—';
+  }
+
+  function renderResults(consumibles, capacidades){
+    // Orden + agrupación
+    const consSorted = naturalSort(consumibles.slice());
+    const capNorm = capacidades.map(normalizeCap);
+    const capSorted = naturalSort(capNorm);
+
+    const grouped = groupConsumibles(consSorted);
+    outCons.innerHTML = grouped.length
+      ? '<ul>' + grouped.map(g=>'<li><strong>'+escapeHtml(g.base)+':</strong> '+g.variantes.map(escapeHtml).join(', ')+'</li>').join('') + '</ul>'
+      : '—';
+
+    outCap.innerHTML = capSorted.length
+      ? '<ul>' + capSorted.map(x=>'<li>'+escapeHtml(x)+'</li>').join('') + '</ul>'
+      : '—';
+
+    cntCons.textContent = grouped.length ? String(consSorted.length) : '0';
+    cntCap.textContent  = capSorted.length ? String(capSorted.length)  : '0';
+  }
+
+  // ---- Web Worker para índice y búsqueda ----
+  const workerCode = `
+    const SEP = /\\s*[;,\\/|]\\s*/;
+    const normalize = s => (s||'')
+      .toLowerCase()
+      .normalize('NFD').replace(/[\\u0300-\\u036f]/g,'')
+      .replace(/[^a-z0-9]+/g,' ')
+      .replace(/\\s+/g,' ')
       .trim();
-
-    async function loadData(){
-      try{
-        const res = await fetch(DATA_URL, { cache: 'no-store' });
-        if(!res.ok) throw new Error('HTTP '+res.status);
-        DATA = await res.json();
-        errorBox.textContent = '';
-      }catch(err){
-        errorBox.textContent = 'Error cargando el dataset. Revisa el nombre y ubicación del JSON.';
-        console.error('Carga JSON:', err);
+    function firstOf(obj, keys){
+      for (const k of keys) {
+        if (obj && obj[k] != null && obj[k] !== '') return String(obj[k]);
+        const K = k.toUpperCase();
+        if (obj && obj[K] != null && obj[K] !== '') return String(obj[K]);
       }
+      return '';
     }
-
-    function renderList(container, items){
-      if(!items || items.length === 0){
-        container.innerHTML = '<p class="muted">Sin resultados.</p>';
-        return;
+    let INDEX = [];
+    self.onmessage = (e) => {
+      const {type, payload} = e.data || {};
+      if (type === 'build'){
+        const DATA = payload || [];
+        INDEX = DATA.map(r=>{
+          const text = [
+            firstOf(r, ['compatibilidades','compatibilidad']),
+            firstOf(r, ['descripcion','descripción','desc']),
+            firstOf(r, ['modelo','model','series'])
+          ].filter(Boolean).join(' | ');
+          const cons = (firstOf(r, ['consumibles','cartucho','consumible'])||'').split(SEP).filter(Boolean);
+          const cap  = (firstOf(r, ['capacidad','cap'])||'').split(SEP).filter(Boolean);
+          return { norm: normalize(text), cons, cap };
+        });
+        self.postMessage({type:'ready'});
       }
-      // Si hay pocos elementos, lista; si son cadenas largas, párrafos
-      const many = items.length > 12;
-      if (many){
-        container.innerHTML = '<ul>'+items.slice(0,200).map(x=>'<li>'+escapeHtml(x)+'</li>').join('')+'</ul>';
-      }else{
-        container.innerHTML = '<ul>'+items.map(x=>'<li>'+escapeHtml(x)+'</li>').join('')+'</ul>';
-      }
-    }
-
-    function escapeHtml(str){
-      return String(str)
-        .replace(/&/g,'&amp;')
-        .replace(/</g,'&lt;')
-        .replace(/>/g,'&gt;');
-    }
-
-    function search(){
-      const raw = qInput.value;
-      const q = normalize(raw);
-      if(!q){
-        consBox.innerHTML = '<p class="muted">Sin resultados.</p>';
-        capBox.innerHTML = '<p class="muted">Sin resultados.</p>';
-        return;
-      }
-
-      const setCons = new Set();
-      const setCap = new Set();
-
-      for(const row of DATA){
-        const comp = normalize(row.compatibilidades || '');
-        const desc = normalize(row.descripcion || '');
-        if (comp.includes(q) || desc.includes(q)){
-          if (row.consumibles) setCons.add(row.consumibles);
-          if (row.capacidad) setCap.add(row.capacidad);
+      if (type === 'search'){
+        const q = String(payload||'').trim();
+        if (!q){ self.postMessage({type:'result', consumibles:[], capacidades:[]}); return; }
+        const qn = normalize(q);
+        const tokens = qn.split(' ').filter(Boolean);
+        const setC = new Set(), setK = new Set();
+        for (const it of INDEX){
+          let ok = true;
+          for (const t of tokens){ if (!it.norm.includes(t)) { ok=false; break; } }
+          if (!ok) continue;
+          for (const c of it.cons) if (c) setC.add(c);
+          for (const k of it.cap)  if (k) setK.add(k);
         }
+        self.postMessage({type:'result', consumibles:Array.from(setC), capacidades:Array.from(setK)});
       }
+    };
+  `;
+  const worker = new Worker(URL.createObjectURL(new Blob([workerCode], {type:'text/javascript'})));
 
-      renderList(consBox, Array.from(setCons));
-      renderList(capBox, Array.from(setCap));
+  let workerReady = false;
+  worker.onmessage = (e)=>{
+    const {type, consumibles, capacidades} = e.data || {};
+    if (type === 'ready'){ workerReady = true; if (input.value.trim()) search(); return; }
+    if (type === 'result'){
+      renderResults(consumibles||[], capacidades||[]);
     }
+  };
 
-    // Eventos
-    qInput.addEventListener('keydown', (e)=>{
-      if(e.key === 'Enter'){ e.preventDefault(); search(); }
-    });
-    qInput.addEventListener('input', debounce(search, 250));
-    clearBtn.addEventListener('click', ()=>{
-      qInput.value = '';
-      qInput.focus();
-      consBox.innerHTML = '<p class="muted">Sin resultados.</p>';
-      capBox.innerHTML = '<p class="muted">Sin resultados.</p>';
-    });
-    googleBtn.addEventListener('click', ()=>{
-      const q = qInput.value.trim();
-      if(!q) return;
-      window.open('https://www.google.com/search?q='+encodeURIComponent(q), '_blank');
-    });
-
-    function debounce(fn, wait){
-      let t; 
-      return (...args)=>{ clearTimeout(t); t=setTimeout(()=>fn.apply(null,args), wait); };
+  // ---- Carga de datos con caché local como fallback ----
+  async function loadData() {
+    const key = 'dataset_cache_v1';
+    try {
+      const res = await fetch(DATASET_URL, {cache:'reload'});
+      const text = await res.text();
+      localStorage.setItem(key, text);
+      const json = JSON.parse(text);
+      if (Array.isArray(json)) worker.postMessage({type:'build', payload: json});
+    } catch(_) {
+      const cached = localStorage.getItem(key);
+      if (cached) {
+        try {
+          const json = JSON.parse(cached);
+          if (Array.isArray(json)) worker.postMessage({type:'build', payload: json});
+        } catch(_) {/* silencio */}
+      }
     }
+  }
 
-    // Inicia
-    loadData();
-  </script>
+  // ---- Búsqueda ----
+  const doSearch = ()=> {
+    const raw = input.value.trim();
+    if (!raw || !workerReady){ renderEmpty(); return; }
+    worker.postMessage({type:'search', payload: raw});
+  };
+  const search = debounce(doSearch, 180);
+
+  // ---- Sincroniza URL (?q=) ----
+  function syncURL(){
+    const v = input.value.trim();
+    const url = new URL(location);
+    v ? url.searchParams.set('q', v) : url.searchParams.delete('q');
+    history.replaceState(null,'',url);
+  }
+  const syncURLdebounced = debounce(syncURL, 180);
+
+  // ---- Eventos ----
+  btnClear.addEventListener('click', () => { input.value=''; syncURL(); renderEmpty(); input.focus(); });
+  input.addEventListener('input', () => { search(); syncURLdebounced(); });
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doSearch(); } });
+
+  btnGoogle.addEventListener('click', () => {
+    const q = input.value.trim();
+    if (!q) return;
+    const queries = [
+      q + ' cartuchos OR tinta',
+      q + ' capacidad ml OR páginas',
+      q + ' compatible'
+    ];
+    window.open('https://www.google.com/search?q='+encodeURIComponent(queries.join(' OR ')),'_blank');
+  });
+
+  // ---- Init ----
+  function bootFromURL(){
+    const q = new URL(location).searchParams.get('q');
+    if (q) input.value = q;
+  }
+  renderEmpty();
+  bootFromURL();
+  loadData();
+})();
+</script>
 </body>
 </html>
