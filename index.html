@@ -2,232 +2,233 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Buscador de Impresoras</title>
   <style>
     :root{
-      --bg:#f6f7fb;
-      --card:#ffffff;
-      --ink:#0f172a;
-      --muted:#6b7280;
-      --primary:#0d47a1;
-      --accent:#ff6d00;
-      --danger:#DB4437;
-      --border:#e5e7eb;
-      --shadow:0 10px 30px rgba(2,6,23,.08);
-      --radius:18px;
+      --primary:#0f4c81;
+      --accent:#ff6a00;
+      --bg:#f5f7fb;
+      --panel:#ffffff;
+      --text:#1b2b3a;
+      --muted:#7a8aa0;
+      --ok:#10893e;
+      --danger:#cc2936;
+      --shadow: 0 10px 25px rgba(16,33,54,.08);
     }
     *{box-sizing:border-box}
-    html,body{margin:0}
+    html,body{height:100%}
     body{
-      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial;
-      background:var(--bg);
-      color:var(--ink);
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      background: var(--bg);
+      color: var(--text);
+      display:flex; flex-direction:column;
     }
-    .wrap{max-width:1000px;margin:46px auto 64px;padding:0 16px}
-    h1{
-      margin:0 0 18px;
+    header{
+      padding:28px 16px 12px;
       text-align:center;
-      font-size:clamp(28px,4.4vw,42px);
+    }
+    h1{
+      margin:0;
+      letter-spacing:.02em;
       color:var(--primary);
-      font-weight:900;
-      letter-spacing:.4px;
+      font-weight:800;
+      font-size: clamp(28px, 4vw, 42px);
       text-transform:uppercase;
     }
-    .sub{
-      text-align:center;
-      color:var(--muted);
-      margin-bottom:18px;
-      font-size:14px;
+    .search-wrap{
+      display:flex; gap:10px; justify-content:center; align-items:center;
+      margin:18px auto 8px; padding:0 16px; width: min(980px, 94%);
     }
-    .searchbar{
-      display:flex;gap:10px;align-items:center;justify-content:center;
-      max-width:720px;margin:0 auto 20px;
+    .search{
+      flex:1; display:flex; align-items:center; background:#fff; border-radius:12px;
+      box-shadow: var(--shadow);
+      padding:6px 10px;
+      border:1px solid #e7eaf0;
     }
-    .field{
-      flex:1;background:var(--card);border:1px solid var(--border);
-      border-radius:999px;padding:6px 14px;display:flex;align-items:center;
-      box-shadow:var(--shadow);
-    }
-    .field input{
-      width:100%;border:0;outline:0;background:transparent;
-      padding:10px 8px;font-size:16px;
+    .search input{
+      width:100%; border:none; outline:none; font-size:16px; padding:12px 10px;
+      background:transparent;
     }
     .btn{
-      border:0;outline:0;border-radius:999px;padding:10px 16px;cursor:pointer;
-      font-weight:700;box-shadow:var(--shadow);transition:transform .06s ease, filter .06s ease;
-      white-space:nowrap;
+      border:none; outline:none; cursor:pointer;
+      padding:12px 16px; border-radius:10px; font-weight:600; font-size:15px;
+      transition:transform .06s ease, filter .06s ease;
     }
-    .btn:active{transform:scale(.98)}
-    .btn-clean{background:var(--accent);color:#fff}
-    .grid{display:grid;gap:16px;margin-top:8px}
-    @media(min-width:860px){ .grid{grid-template-columns:1fr 1fr} }
+    .btn:active{transform:translateY(1px)}
+    .btn-clean{ background: var(--accent); color:#fff; }
+    .btn-google{ background:#e53935; color:#fff; display:block; margin:18px auto 6px; }
+    .btn-google:hover{ filter:brightness(1.05) }
+    .grid{
+      width:min(1100px, 96%); margin:14px auto 0; display:grid; gap:20px;
+      grid-template-columns: 1fr; 
+    }
+    @media (min-width: 880px){
+      .grid{ grid-template-columns: 1fr 1fr; }
+    }
     .card{
-      background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
-      box-shadow:var(--shadow);min-height:200px;display:flex;flex-direction:column;
+      background:var(--panel); border-radius:16px; box-shadow: var(--shadow);
+      border:1px solid #e8edf5; overflow:hidden;
     }
     .card header{
-      padding:12px 16px;border-bottom:1px solid var(--border)
+      text-align:left; padding:14px 18px; background: linear-gradient(180deg, #f8fbff, #fff);
+      border-bottom:1px solid #eef2f8;
     }
-    .card header h2{
-      margin:0;font-size:16px;text-transform:uppercase;letter-spacing:.35px;color:#0b62d6
+    .card h2{
+      margin:0; font-size:18px; letter-spacing:.02em; color:#0b5fb6;
+      text-transform:uppercase;
     }
-    .body{padding:14px 16px 18px;line-height:1.45}
-    .empty{color:var(--muted);font-style:italic}
-    .list{margin:0;padding-left:18px}
-    .footer-actions{display:flex;justify-content:center;margin-top:18px}
-    .btn-google{background:var(--danger);color:#fff}
-    .hint{margin-top:10px;text-align:center;color:var(--muted);font-size:13px}
-    .badge{display:inline-block;margin-left:8px;font-size:12px;padding:2px 8px;border-radius:999px;background:#eef2ff;color:#334155}
-    .status{display:flex;gap:8px;align-items:center;justify-content:center;margin:6px 0 14px;color:var(--muted);font-size:13px}
-    .dot{width:8px;height:8px;border-radius:999px;background:#a3a3a3}
-    .error{color:#b91c1c;text-align:center;font-weight:600}
-    .capsule{display:inline-block;padding:2px 10px;border:1px solid var(--border);border-radius:999px;background:#fafafa;font-size:12px;margin-left:8px}
+    .card .content{
+      padding:16px 18px; min-height:230px;
+    }
+    .muted{ color:var(--muted); font-style:italic; }
+    .pill{
+      display:inline-block; background:#eef5ff; color:#0b5fb6; padding:6px 10px; border-radius:999px;
+      font-weight:600; font-size:12px; letter-spacing:.02em; margin-right:8px;
+    }
+    .error{
+      text-align:center; color:var(--danger); font-weight:700; margin-top:6px;
+      min-height:22px;
+    }
+    ul{ margin:0; padding-left:18px; }
+    li{ margin:6px 0; }
+    footer{
+      margin-top:auto; padding:14px; text-align:center; color:var(--muted); font-size:13px;
+    }
   </style>
 </head>
 <body>
-  <main class="wrap">
+  <header>
     <h1>Buscador de Impresoras</h1>
-    <p class="sub">Escribe un modelo (p. ej. <b>TS3350</b>, <b>TR 4751</b>, <b>4751</b>). Busca en <em>compatibilidades</em> y <em>descripción</em> (ignora mayúsculas y espacios).</p>
-
-    <section class="searchbar">
-      <div class="field" role="search" aria-label="Buscar por modelo o texto">
-        <input id="q" placeholder="Modelo o texto (TS3350, TR4751, 4751…)" autocomplete="off" />
+    <div class="search-wrap">
+      <div class="search" role="search">
+        <input id="q" type="text" placeholder="Escribe modelo o cartucho… (p.ej. TS3350, TR4751, 4751…)" autocomplete="off" />
       </div>
-      <button id="clear" class="btn btn-clean">Limpiar</button>
-    </section>
-
-    <div id="status" class="status"><span class="dot"></span><span>Cargando datos…</span></div>
-    <div id="err" class="error" style="display:none"></div>
-
-    <section class="grid">
-      <article class="card" aria-live="polite">
-        <header><h2>Consumibles <span class="badge">columna B</span></h2></header>
-        <div class="body">
-          <ul id="consumibles" class="list"></ul>
-          <div id="consumiblesEmpty" class="empty">Sin resultados.</div>
-        </div>
-      </article>
-
-      <article class="card" aria-live="polite">
-        <header><h2>Capacidad <span class="badge">columna C</span></h2></header>
-        <div class="body">
-          <ul id="capacidad" class="list"></ul>
-          <div id="capacidadEmpty" class="empty">Sin resultados.</div>
-        </div>
-      </article>
-    </section>
-
-    <div class="footer-actions">
-      <button id="google" class="btn btn-google">Buscar en Google</button>
+      <button id="clearBtn" class="btn btn-clean" title="Limpiar">Limpiar</button>
     </div>
-    <p class="hint">Sugerencia: prueba <span class="capsule">ts 3350</span> · <span class="capsule">tr4751</span> · <span class="capsule">4751</span></p>
+    <div id="errorBox" class="error" aria-live="polite"></div>
+  </header>
+
+  <main class="grid" aria-live="polite">
+    <section class="card" aria-labelledby="h-cons">
+      <header><h2 id="h-cons">Consumibles</h2></header>
+      <div class="content" id="consBox"><p class="muted">Sin resultados.</p></div>
+    </section>
+
+    <section class="card" aria-labelledby="h-cap">
+      <header><h2 id="h-cap">Capacidad</h2></header>
+      <div class="content" id="capBox"><p class="muted">Sin resultados.</p></div>
+    </section>
   </main>
 
+  <button id="googleBtn" class="btn btn-google">Buscar en Google</button>
+
+  <footer>© <span id="year"></span> — Buscador de consumibles y capacidades</footer>
+
   <script>
-    // ===== CONFIG =====
-    const DATA_URL = 'data_impresoras_v2.json'; // JSON esperado en la raíz del repo
-
-    // ===== UTILS =====
-    const $ = (sel) => document.querySelector(sel);
-    const byId = (id) => document.getElementById(id);
-    const normalize = (s='') => s.toString().toLowerCase().normalize('NFD')
-      .replace(/[\\u0300-\\u036f]/g,'').replace(/\\s+/g,'');
-
-    const uniquePush = (set, val) => { if (val != null && String(val).trim() !== '') set.add(String(val).trim()); };
-
-    // ===== DOM =====
-    const input = byId('q');
-    const btnClear = byId('clear');
-    const btnGoogle = byId('google');
-
-    const ulConsumibles = byId('consumibles');
-    const ulCapacidad = byId('capacidad');
-    const emptyConsumibles = byId('consumiblesEmpty');
-    const emptyCapacidad = byId('capacidadEmpty');
-    const statusBox = byId('status');
-    const errBox = byId('err');
+    // === Ajusta SOLO este nombre si cambias el JSON ===
+    const DATA_URL = 'data_impresoras_v2.json';
+    // ================================================
 
     let DATA = [];
+    const $ = (sel)=>document.querySelector(sel);
+    const $$ = (sel)=>document.querySelectorAll(sel);
+    const qInput = $('#q');
+    const errorBox = $('#errorBox');
+    const consBox = $('#consBox');
+    const capBox = $('#capBox');
+    const clearBtn = $('#clearBtn');
+    const googleBtn = $('#googleBtn');
+    $('#year').textContent = new Date().getFullYear();
 
-    // ===== LOAD =====
+    // Normaliza texto: minúsculas, sin espacios ni guiones
+    const normalize = (s='') => s.toString().toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+      .replace(/[\s\-_.,/]+/g,'')
+      .trim();
+
     async function loadData(){
       try{
         const res = await fetch(DATA_URL, { cache: 'no-store' });
-        if(!res.ok) throw new Error('No se pudo cargar ' + DATA_URL + ' (' + res.status + ')');
+        if(!res.ok) throw new Error('HTTP '+res.status);
         DATA = await res.json();
-        statusBox.style.display = 'none';
+        errorBox.textContent = '';
       }catch(err){
-        console.error(err);
-        statusBox.style.display = 'none';
-        errBox.style.display = 'block';
-        errBox.textContent = 'Error cargando el dataset. Revisa el nombre y ubicación del JSON.';
+        errorBox.textContent = 'Error cargando el dataset. Revisa el nombre y ubicación del JSON.';
+        console.error('Carga JSON:', err);
       }
     }
 
-    // ===== RENDER =====
-    function renderLists(consumiblesArr, capacidadArr){
-      // Consumibles
-      if(consumiblesArr.length){
-        ulConsumibles.innerHTML = consumiblesArr.map(v => '<li>'+v+'</li>').join('');
-        emptyConsumibles.style.display = 'none';
-      }else{
-        ulConsumibles.innerHTML = '';
-        emptyConsumibles.style.display = 'block';
+    function renderList(container, items){
+      if(!items || items.length === 0){
+        container.innerHTML = '<p class="muted">Sin resultados.</p>';
+        return;
       }
-      // Capacidad
-      if(capacidadArr.length){
-        ulCapacidad.innerHTML = capacidadArr.map(v => '<li>'+v+'</li>').join('');
-        emptyCapacidad.style.display = 'none';
+      // Si hay pocos elementos, lista; si son cadenas largas, párrafos
+      const many = items.length > 12;
+      if (many){
+        container.innerHTML = '<ul>'+items.slice(0,200).map(x=>'<li>'+escapeHtml(x)+'</li>').join('')+'</ul>';
       }else{
-        ulCapacidad.innerHTML = '';
-        emptyCapacidad.style.display = 'block';
+        container.innerHTML = '<ul>'+items.map(x=>'<li>'+escapeHtml(x)+'</li>').join('')+'</ul>';
       }
     }
 
-    // ===== SEARCH =====
+    function escapeHtml(str){
+      return String(str)
+        .replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;');
+    }
+
     function search(){
-      const q = normalize(input.value);
-      if(!q){ renderLists([],[]); return; }
+      const raw = qInput.value;
+      const q = normalize(raw);
+      if(!q){
+        consBox.innerHTML = '<p class="muted">Sin resultados.</p>';
+        capBox.innerHTML = '<p class="muted">Sin resultados.</p>';
+        return;
+      }
 
-      const consumiblesSet = new Set();
-      const capacidadSet = new Set();
+      const setCons = new Set();
+      const setCap = new Set();
 
       for(const row of DATA){
-        // Campos esperados en el JSON por fila:
-        // referencia, consumibles, capacidad, compatibilidades, descripcion
-        const inCompat = normalize(row.compatibilidades || '').includes(q);
-        const inDesc   = normalize(row.descripcion || '').includes(q);
-
-        if(inCompat || inDesc){
-          uniquePush(consumiblesSet, row.consumibles);
-          uniquePush(capacidadSet, row.capacidad);
+        const comp = normalize(row.compatibilidades || '');
+        const desc = normalize(row.descripcion || '');
+        if (comp.includes(q) || desc.includes(q)){
+          if (row.consumibles) setCons.add(row.consumibles);
+          if (row.capacidad) setCap.add(row.capacidad);
         }
       }
 
-      renderLists([...consumiblesSet], [...capacidadSet]);
+      renderList(consBox, Array.from(setCons));
+      renderList(capBox, Array.from(setCap));
     }
 
-    // ===== EVENTS =====
-    input.addEventListener('keydown', (e)=>{
-      if(e.key === 'Enter'){
-        e.preventDefault();
-        search();
-      }
+    // Eventos
+    qInput.addEventListener('keydown', (e)=>{
+      if(e.key === 'Enter'){ e.preventDefault(); search(); }
+    });
+    qInput.addEventListener('input', debounce(search, 250));
+    clearBtn.addEventListener('click', ()=>{
+      qInput.value = '';
+      qInput.focus();
+      consBox.innerHTML = '<p class="muted">Sin resultados.</p>';
+      capBox.innerHTML = '<p class="muted">Sin resultados.</p>';
+    });
+    googleBtn.addEventListener('click', ()=>{
+      const q = qInput.value.trim();
+      if(!q) return;
+      window.open('https://www.google.com/search?q='+encodeURIComponent(q), '_blank');
     });
 
-    btnClear.addEventListener('click', ()=>{
-      input.value = '';
-      renderLists([],[]);
-      input.focus();
-    });
+    function debounce(fn, wait){
+      let t; 
+      return (...args)=>{ clearTimeout(t); t=setTimeout(()=>fn.apply(null,args), wait); };
+    }
 
-    btnGoogle.addEventListener('click', ()=>{
-      const q = input.value.trim();
-      if(q) window.open('https://www.google.com/search?q=' + encodeURIComponent(q), '_blank');
-    });
-
-    // Init
+    // Inicia
     loadData();
   </script>
 </body>
