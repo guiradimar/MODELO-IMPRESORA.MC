@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Buscador de Impresoras — Modelo preciso</title>
+  <title>Buscador de Impresoras</title>
   <style>
     :root{
       --blue:#0b63c8; --blue-2:#0f5ab0; --accent:#ff6a00;
@@ -11,8 +11,7 @@
       --shadow: 0 10px 24px rgba(0,0,0,.08); --radius:18px;
     }
     *{box-sizing:border-box}
-    body{ margin:0; font-family:ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
-      background:var(--bg); color:#0f172a;}
+    body{margin:0;font-family:ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;background:var(--bg);color:#0f172a;}
     .wrap{max-width:1100px;margin:0 auto;padding:42px 20px 80px}
     h1{margin:0 0 20px;text-align:center;font-size:clamp(28px,4vw,46px);letter-spacing:.5px;color:var(--blue);font-weight:800}
     .searchbar{display:flex;gap:12px;justify-content:center;margin:10px auto 18px;max-width:860px}
@@ -24,7 +23,7 @@
     .grid{display:grid;gap:22px;grid-template-columns:1fr;margin-top:8px}
     @media (min-width:900px){ .grid{grid-template-columns:1fr 1fr;} }
     .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;border:1px solid #eef2f7}
-    .card header{padding:16px 18px;background:linear-gradient(0deg,#fafcff, #ffffff);border-bottom:1px solid #eef2f7;font-weight:800;color:var(--blue-2);display:flex;justify-content:space-between;align-items:center}
+    .card header{padding:16px 18px;background:linear-gradient(0deg,#fafcff,#ffffff);border-bottom:1px solid #eef2f7;font-weight:800;color:var(--blue-2);display:flex;justify-content:space-between;align-items:center}
     .count{color:#64748b;font-weight:700;font-size:14px}
     .card .body{padding:18px;min-height:220px;color:#111827;line-height:1.45}
     footer{margin-top:32px;text-align:center;color:#94a3b8;font-size:12px}
@@ -36,8 +35,8 @@
   <div class="wrap">
     <h1>BUSCADOR DE IMPRESORAS</h1>
     <div class="searchbar" role="search">
-      <input id="q" type="text" placeholder="TS3350, TS 3350, 3350, Canon 3350, TR4751…" autocomplete="off">
-      <button id="clear" class="btn btn-clear" aria-label="Limpiar búsqueda">Limpiar</button>
+      <input id="q" type="text" placeholder="TS3350, 3350, Canon 3350, Pixma 4751, Deskjet 3747..." autocomplete="off">
+      <button id="clear" class="btn btn-clear">Limpiar</button>
     </div>
     <div class="grid">
       <section class="card">
@@ -64,118 +63,125 @@
   const btnClear = $('#clear');
   const btnGoogle = $('#google');
 
-  const DATASET_CANDIDATES = [
+  const DATASET_URLS = [
     './dataset_impresoras_v2.json',
     'https://raw.githubusercontent.com/guiradimar/MODELO-IMPRESORA.MC/main/dataset_impresoras_v2.json'
   ];
 
-  const normalize = s => (s||'')
-    .toLowerCase()
-    .replace(/([a-z])([0-9])/g, '$1 $2')
-    .replace(/([0-9])([a-z])/g, '$1 $2')
+  const normalize = s => (s||'').toLowerCase()
     .normalize('NFD').replace(/[\\u0300-\\u036f]/g,'')
     .replace(/[^a-z0-9]+/g,' ')
-    .replace(/\\s+/g,' ')
     .trim();
 
-  const BRAND_STOPWORDS = new Set(['canon','hp','hewlett','epson','brother','lexmark','xerox','ricoh','kyocera','oki','samsung']);
+  const BRANDS = new Set(['canon','hp','hewlett','epson','brother','lexmark','xerox','ricoh','kyocera','oki','samsung']);
 
   function firstOf(obj, keys){
     for (const k of keys){
       if (obj && obj[k] != null && obj[k] !== '') return String(obj[k]);
-      const K = k.toUpperCase();
-      if (obj && obj[K] != null && obj[K] !== '') return String(obj[K]);
     }
     return '';
   }
 
-  const SEP = /\\s*[;,\\/|]\\s*/;
-
-  function tokensFromCompat(compat){
-    const n = normalize(compat);
-    const series = new Set();
-    if (/\\bpixma\\s*ts\\b/.test(n) || /\\bts\\b/.test(n)) series.add('ts');
-    if (/\\bpixma\\s*mg\\b/.test(n) || /\\bmg\\b/.test(n)) series.add('mg');
-    if (/\\bpixma\\s*mx\\b/.test(n) || /\\bmx\\b/.test(n)) series.add('mx');
-    if (/\\bpixma\\s*tr\\b/.test(n) || /\\btr\\b/.test(n)) series.add('tr');
-    if (/\\bdeskjet\\b/.test(n) || /\\bdj\\b/.test(n)) series.add('dj');
-    if (/\\blaserjet\\b/.test(n) || /\\blj\\b/.test(n)) series.add('lj');
-    if (/\\bworkcentre\\b/.test(n) || /\\bwc\\b/.test(n)) series.add('wc');
-    const nums = new Set((n.match(/\\b\\d{2,6}\\b/g) || []));
-    return {series, nums};
+  function extractTokens(text){
+    const n = ' ' + normalize(text) + ' ';
+    const tokens = new Set();
+    const seriesRegex = [
+      {key:'pixma', re:/\\bpixma\\b/},
+      {key:'ts', re:/\\bpixma\\s*ts\\b|\\bts\\b/},
+      {key:'mg', re:/\\bpixma\\s*mg\\b|\\bmg\\b/},
+      {key:'mx', re:/\\bpixma\\s*mx\\b|\\bmx\\b/},
+      {key:'tr', re:/\\bpixma\\s*tr\\b|\\btr\\b/},
+      {key:'dj', re:/\\bdesk\\s*jet\\b|\\bdeskjet\\b|\\bdj\\b/},
+      {key:'lj', re:/\\blaser\\s*jet\\b|\\blaserjet\\b|\\blj\\b/},
+      {key:'wc', re:/\\bwork\\s*centre\\b|\\bworkcentre\\b|\\bwc\\b/},
+      {key:'oj', re:/\\boffice\\s*jet\\b|\\bofficejet\\b|\\boj\\b/}
+    ];
+    for (const s of seriesRegex){ if (s.re.test(n)) tokens.add(s.key); }
+    const alnumRe = /\\b([a-z]{1,5})\\s*(\\d{2,6})([a-z]{1,3})?\\b/g;
+    let m;
+    while ((m = alnumRe.exec(n))){
+      tokens.add(m[1] + m[2] + (m[3]||''));
+      tokens.add(m[2]);
+    }
+    for (const num of (n.match(/\\b\\d{2,6}\\b/g) || [])) tokens.add(num);
+    return tokens;
   }
 
-  function parseQuery(q){
-    const toks = normalize(q).split(' ').filter(Boolean).filter(t => !BRAND_STOPWORDS.has(t));
-    const series = new Set(toks.filter(t => isNaN(Number(t))));
-    const nums   = new Set(toks.filter(t => /^\\d{2,6}$/.test(t)));
-    return {series, nums};
+  function tokensFromQuery(q){
+    const nq = normalize(q);
+    const tokens = new Set();
+    const parts = nq.split(' ').filter(Boolean).filter(t => !BRANDS.has(t));
+    if (/\\bpixma\\b/.test(nq)) tokens.add('pixma');
+    if (/\\bts\\b/.test(nq)) tokens.add('ts');
+    if (/\\bmg\\b/.test(nq)) tokens.add('mg');
+    if (/\\bmx\\b/.test(nq)) tokens.add('mx');
+    if (/\\btr\\b/.test(nq)) tokens.add('tr');
+    if (/\\bdj\\b|\\bdesk\\s*jet\\b|\\bdeskjet\\b/.test(nq)) tokens.add('dj');
+    if (/\\blj\\b|\\blaser\\s*jet\\b|\\blaserjet\\b/.test(nq)) tokens.add('lj');
+    if (/\\bwc\\b|\\bwork\\s*centre\\b|\\bworkcentre\\b/.test(nq)) tokens.add('wc');
+    const alnumRe = /\\b([a-z]{1,5})\\s*(\\d{2,6})([a-z]{1,3})?\\b/g;
+    let m;
+    while ((m = alnumRe.exec(nq))){
+      tokens.add(m[1] + m[2] + (m[3]||''));
+      tokens.add(m[2]);
+    }
+    for (const num of (nq.match(/\\b\\d{2,6}\\b/g) || [])) tokens.add(num);
+    for (const p of parts) tokens.add(p);
+    return tokens;
   }
 
   function buildIndex(data){
-    return data.map(r => {
-      const compat = firstOf(r, ['compatibilidades','compatibilidad']);
-      const {series, nums} = tokensFromCompat(compat);
-      const cons = (firstOf(r, ['consumibles','cartucho','consumible'])||'').split(SEP).filter(Boolean);
-      const cap  = (firstOf(r, ['capacidad','cap'])||'').split(SEP).filter(Boolean);
-      return {series, nums, cons, cap};
+    return data.map(row => {
+      const compat = firstOf(row, ['compatibilidades','compatibilidad']);
+      const tokens = extractTokens(compat);
+      const cons = (firstOf(row, ['consumibles','cartucho','consumible'])||'').split(/\\s*[;,\\/|]\\s*/).filter(Boolean);
+      const cap  = (firstOf(row, ['capacidad','cap'])||'').split(/\\s*[;,\\/|]\\s*/).filter(Boolean);
+      return {tokens, cons, cap};
     });
   }
 
   async function loadData(){
-    for (const url of DATASET_CANDIDATES){
+    for (const url of DATASET_URLS){
       try{
         const r = await fetch(url, {cache:'reload'});
         if (r.ok){
           const json = await r.json();
-          if (Array.isArray(json)) { console.log('Registros cargados:', json.length, 'desde', url); return json; }
+          if (Array.isArray(json)) return json;
         }
-      }catch(_){}
+      }catch(e){}
     }
-    console.warn('No se pudo cargar dataset');
     return [];
-  }
-
-  function render(consumibles, capacidades){
-    const toList = arr => arr.length ? '<ul>'+arr.map(v=>'<li>'+String(v).replace(/[&<>]/g, s=>({ '&':'&amp;','<':'&lt;','>':'&gt;' }[s]))+'</li>').join('')+'</ul>' : '—';
-    outCons.innerHTML = toList(consumibles);
-    outCap.innerHTML = toList(capacidades);
-    cntCons.textContent = String(consumibles.length || 0);
-    cntCap.textContent = String(capacidades.length || 0);
   }
 
   const DATA = await loadData();
   const INDEX = buildIndex(DATA);
 
+  function render(cons, cap){
+    const toList = arr => arr.length ? '<ul>'+arr.map(v=>'<li>'+v+'</li>').join('')+'</ul>' : '—';
+    outCons.innerHTML = toList(cons);
+    outCap.innerHTML = toList(cap);
+    cntCons.textContent = cons.length || 0;
+    cntCap.textContent = cap.length || 0;
+  }
+
   function search(){
-    const {series: qs, nums: qn} = parseQuery(input.value);
-    if (!qs.size && !qn.size){ render([],[]); return; }
+    const qTokens = tokensFromQuery(input.value);
+    if (!qTokens.size){ render([],[]); return; }
     const setC = new Set(), setK = new Set();
     for (const it of INDEX){
-      // si hay series en la query, deben estar todas
-      for (const s of qs){ if (!it.series.has(s)) { gotoNext: continue; } }
-      // si hay números en la query, deben estar todos
-      for (const n of qn){ if (!it.nums.has(n)) { gotoNext: continue; } }
-      // acumulamos
-      it.cons.forEach(x => x && setC.add(x));
-      it.cap.forEach(x => x && setK.add(x));
-      continue;
-      gotoNext:; // etiqueta para saltar al siguiente item si falla
+      let ok = true;
+      for (const t of qTokens){ if (!it.tokens.has(t)){ ok=false; break; } }
+      if (!ok) continue;
+      it.cons.forEach(c => setC.add(c));
+      it.cap.forEach(k => setK.add(k));
     }
     render(Array.from(setC), Array.from(setK));
   }
 
-  const debounce = (fn,ms)=>{ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),ms) } };
-  const doSearch = ()=> search();
-  input.addEventListener('input', debounce(doSearch, 160));
-  input.addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); doSearch(); } });
+  input.addEventListener('input', () => search());
   btnClear.addEventListener('click', ()=>{ input.value=''; render([],[]); input.focus(); });
   btnGoogle.addEventListener('click', ()=>{ const q=input.value.trim(); if(q) window.open('https://www.google.com/search?q='+encodeURIComponent(q),'_blank'); });
 
-  // Búsqueda inicial si hay ?q=
-  const qParam = new URL(location).searchParams.get('q');
-  if (qParam){ input.value = qParam; }
-  doSearch();
 })();
 </script>
 </body>
