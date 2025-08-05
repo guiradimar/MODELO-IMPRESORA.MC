@@ -5,69 +5,39 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Buscador de Impresoras</title>
   <style>
-    :root{
-      --blue:#0b63c8; --blue-2:#0f5ab0; --accent:#ff6a00;
-      --bg:#f4f6fa; --card:#ffffff; --muted:#6b7280;
-      --shadow: 0 10px 24px rgba(0,0,0,.08); --radius:18px;
-    }
-    *{box-sizing:border-box}
-    body{ margin:0; font-family:ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
-      background:var(--bg); color:#0f172a;}
-    .wrap{max-width:1100px;margin:0 auto;padding:42px 20px 80px}
-    h1{margin:0 0 20px;text-align:center;font-size:clamp(28px,4vw,46px);letter-spacing:.5px;color:var(--blue);font-weight:800}
-    .searchbar{display:flex;gap:12px;justify-content:center;margin:10px auto 18px;max-width:860px}
-    .searchbar input{
-      flex:1;min-width:300px;background:#fff;border:1px solid #e5e7eb;border-radius:14px;
-      padding:14px 16px;font-size:16px;outline:none;box-shadow:var(--shadow);
-    }
-    .btn{border:0;border-radius:12px;padding:12px 18px;font-weight:700;cursor:pointer;transition:.18s transform ease;box-shadow:var(--shadow)}
-    .btn:active{transform:scale(.98)}
-    .btn-clear{background:var(--accent);color:#fff;}
-    .btn-google{display:block;margin:22px auto 0;background:#d93025;color:#fff}
-    .grid{display:grid;gap:22px;grid-template-columns:1fr;margin-top:8px}
-    @media (min-width:900px){ .grid{grid-template-columns:1fr 1fr;} }
-    .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;border:1px solid #eef2f7}
-    .card header{padding:16px 18px;background:linear-gradient(0deg,#fafcff, #ffffff);border-bottom:1px solid #eef2f7;font-weight:800;color:var(--blue-2);display:flex;justify-content:space-between;align-items:center}
-    .count{color:#64748b;font-weight:700;font-size:14px}
-    .card .body{padding:18px;min-height:220px;color:#111827;line-height:1.45}
-    .muted{color:var(--muted);font-style:italic}
-    .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
-    ul{margin:0;padding-left:18px}
-    li{margin:.3rem 0}
-    footer{margin-top:32px;text-align:center;color:#94a3b8;font-size:12px}
+    body { font-family: Arial, sans-serif; background-color: #f4f6fa; margin: 0; }
+    .wrap { max-width: 900px; margin: 0 auto; padding: 20px; }
+    h1 { text-align: center; color: #0b63c8; }
+    .searchbar { display: flex; gap: 10px; margin-bottom: 20px; }
+    .searchbar input { flex: 1; padding: 10px; border-radius: 5px; border: 1px solid #ccc; }
+    .btn { padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; }
+    .btn-clear { background-color: #ff6a00; color: #fff; }
+    .btn-google { background-color: #d93025; color: #fff; margin-top: 15px; display: block; width: 100%; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .card { background: #fff; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    .card header { background-color: #0f5ab0; color: #fff; padding: 10px; border-radius: 8px 8px 0 0; font-weight: bold; }
+    .card .body { padding: 10px; min-height: 150px; }
+    ul { margin: 0; padding-left: 20px; }
   </style>
 </head>
 <body>
   <div class="wrap">
     <h1>BUSCADOR DE IMPRESORAS</h1>
-
-    <div class="searchbar" role="search">
-      <label for="q" class="sr-only">Modelo de impresora</label>
-      <input id="q" type="text" placeholder="Escribe modelo (p. ej. TS3350, TR 4751…)" autocomplete="off" aria-label="Buscar por modelo">
-      <button id="clear" class="btn btn-clear" aria-label="Limpiar búsqueda">Limpiar</button>
+    <div class="searchbar">
+      <input id="q" type="text" placeholder="Escribe modelo (p. ej. TS3350, TR 4751…)" autocomplete="off">
+      <button id="clear" class="btn btn-clear">Limpiar</button>
     </div>
-
     <div class="grid">
-      <section class="card" aria-labelledby="h-consumibles">
-        <header>
-          <span id="h-consumibles">CONSUMIBLES</span>
-          <span id="count-cons" class="count">—</span>
-        </header>
-        <div id="consumibles" class="body" aria-live="polite" role="status">—</div>
+      <section class="card">
+        <header>CONSUMIBLES</header>
+        <div id="consumibles" class="body">—</div>
       </section>
-
-      <section class="card" aria-labelledby="h-capacidad">
-        <header>
-          <span id="h-capacidad">CAPACIDAD</span>
-          <span id="count-cap" class="count">—</span>
-        </header>
-        <div id="capacidad" class="body" aria-live="polite" role="status">—</div>
+      <section class="card">
+        <header>CAPACIDAD</header>
+        <div id="capacidad" class="body">—</div>
       </section>
     </div>
-
-    <button id="google" class="btn btn-google" aria-label="Buscar este modelo en Google">Buscar en Google</button>
-
-    <footer>© 2025 — Buscador de consumibles y capacidades</footer>
+    <button id="google" class="btn btn-google">Buscar en Google</button>
   </div>
 
 <script>
@@ -76,199 +46,52 @@
   const input = $('#q');
   const outCons = $('#consumibles');
   const outCap = $('#capacidad');
-  const cntCons = $('#count-cons');
-  const cntCap = $('#count-cap');
   const btnClear = $('#clear');
   const btnGoogle = $('#google');
 
-  // JSON en la misma carpeta
-  const DATASET_URL = './dataset_impresoras_v2.json';
+  const DATASET_URL = 'https://raw.githubusercontent.com/guiradimar/MODELO-IMPRESORA.MC/main/dataset_impresoras_v2.json';
 
-  const normalize = s => (s||'')
-    .toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-    .replace(/[^a-z0-9]+/g,' ')
-    .replace(/\s+/g,' ')
-    .trim();
+  let DATA = [];
 
+  const normalize = s => (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();
   const firstOf = (obj, keys) => {
     for (const k of keys) {
-      if (obj && obj[k] != null && obj[k] !== '') return String(obj[k]);
-      const K = k.toUpperCase();
-      if (obj && obj[K] != null && obj[K] !== '') return String(obj[K]);
+      if (obj && obj[k]) return String(obj[k]);
     }
     return '';
   };
 
-  const SEP = /\s*[;,/|]\s*/;
-  const coll = new Intl.Collator('es', {numeric:true, sensitivity:'base'});
-  const naturalSort = arr => arr.sort(coll.compare);
-
-  function escapeHtml(s){
-    return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-  }
-
-  function groupConsumibles(list){
-    const map = new Map();
-    for (const x of list){
-      const base = x.replace(/\b(XL|XXL)\b/ig,'').replace(/\s+/g,' ').trim();
-      if (!map.has(base)) map.set(base, new Set());
-      map.get(base).add(x);
-    }
-    return Array.from(map.entries()).map(([base,set])=>({base, variantes: naturalSort(Array.from(set))}));
-  }
-
-  function normalizeCap(v){
-    const txt = String(v).trim();
-    const m = txt.match(/(\d+(?:[.,]\d+)?)\s*(ml|pag|pags|pág|páginas)?/i);
-    if (!m) return txt;
-    let num = parseFloat(m[1].replace(',','.'));
-    const unit = (m[2]||'').toLowerCase();
-    if (unit.startsWith('pag') || unit.startsWith('pág')) return `${Math.round(num)} páginas`;
-    if (!unit) return String(num);
-    return `${num} ml`;
-  }
-
-  const debounce = (fn,ms)=>{let t;return (...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms)}};
-
-  function renderEmpty(){
-    outCons.textContent = '—';
-    outCap.textContent = '—';
-    cntCons.textContent = '—';
-    cntCap.textContent = '—';
-  }
-
-  function renderResults(consumibles, capacidades){
-    const consSorted = naturalSort(consumibles.slice());
-    const capNorm = capacidades.map(normalizeCap);
-    const capSorted = naturalSort(capNorm);
-
-    const grouped = groupConsumibles(consSorted);
-    outCons.innerHTML = grouped.length
-      ? '<ul>' + grouped.map(g=>'<li><strong>'+escapeHtml(g.base)+':</strong> '+g.variantes.map(escapeHtml).join(', ')+'</li>').join('') + '</ul>'
-      : '—';
-
-    outCap.innerHTML = capSorted.length
-      ? '<ul>' + capSorted.map(x=>'<li>'+escapeHtml(x)+'</li>').join('') + '</ul>'
-      : '—';
-
-    cntCons.textContent = grouped.length ? String(consSorted.length) : '0';
-    cntCap.textContent  = capSorted.length ? String(capSorted.length)  : '0';
-  }
-
-  const workerCode = `
-    const SEP = /\\s*[;,\\/|]\\s*/;
-    const normalize = s => (s||'')
-      .toLowerCase()
-      .normalize('NFD').replace(/[\\u0300-\\u036f]/g,'')
-      .replace(/[^a-z0-9]+/g,' ')
-      .replace(/\\s+/g,' ')
-      .trim();
-    function firstOf(obj, keys){
-      for (const k of keys) {
-        if (obj && obj[k] != null && obj[k] !== '') return String(obj[k]);
-        const K = k.toUpperCase();
-        if (obj && obj[K] != null && obj[K] !== '') return String(obj[K]);
-      }
-      return '';
-    }
-    let INDEX = [];
-    self.onmessage = (e) => {
-      const {type, payload} = e.data || {};
-      if (type === 'build'){
-        const DATA = payload || [];
-        INDEX = DATA.map(r=>{
-          const text = [
-            firstOf(r, ['compatibilidades','compatibilidad']),
-            firstOf(r, ['descripcion','descripción','desc']),
-            firstOf(r, ['modelo','model','series'])
-          ].filter(Boolean).join(' | ');
-          const cons = (firstOf(r, ['consumibles','cartucho','consumible'])||'').split(SEP).filter(Boolean);
-          const cap  = (firstOf(r, ['capacidad','cap'])||'').split(SEP).filter(Boolean);
-          return { norm: normalize(text), cons, cap };
-        });
-        self.postMessage({type:'ready'});
-      }
-      if (type === 'search'){
-        const q = String(payload||'').trim();
-        if (!q){ self.postMessage({type:'result', consumibles:[], capacidades:[]}); return; }
-        const qn = normalize(q);
-        const tokens = qn.split(' ').filter(Boolean);
-        const setC = new Set(), setK = new Set();
-        for (const it of INDEX){
-          let ok = true;
-          for (const t of tokens){ if (!it.norm.includes(t)) { ok=false; break; } }
-          if (!ok) continue;
-          for (const c of it.cons) if (c) setC.add(c);
-          for (const k of it.cap)  if (k) setK.add(k);
-        }
-        self.postMessage({type:'result', consumibles:Array.from(setC), capacidades:Array.from(setK)});
-      }
-    };
-  `;
-  const worker = new Worker(URL.createObjectURL(new Blob([workerCode], {type:'text/javascript'})));
-  let workerReady = false;
-  worker.onmessage = (e)=>{
-    const {type, consumibles, capacidades} = e.data || {};
-    if (type === 'ready'){ workerReady = true; if (input.value.trim()) search(); return; }
-    if (type === 'result'){ renderResults(consumibles||[], capacidades||[]); }
-  };
-
   async function loadData() {
-    const key = 'dataset_cache_v1';
     try {
-      const res = await fetch(DATASET_URL, {cache:'reload'});
-      const text = await res.text();
-      localStorage.setItem(key, text);
-      const json = JSON.parse(text);
-      if (Array.isArray(json)) worker.postMessage({type:'build', payload: json});
-    } catch(_) {
-      const cached = localStorage.getItem(key);
-      if (cached) {
-        try {
-          const json = JSON.parse(cached);
-          if (Array.isArray(json)) worker.postMessage({type:'build', payload: json});
-        } catch(_) {}
-      }
+      const res = await fetch(DATASET_URL);
+      const json = await res.json();
+      if (Array.isArray(json)) DATA = json;
+    } catch (e) {
+      console.error('Error cargando dataset', e);
     }
   }
 
-  const doSearch = ()=> {
-    const raw = input.value.trim();
-    if (!raw || !workerReady){ renderEmpty(); return; }
-    worker.postMessage({type:'search', payload: raw});
-  };
-  const search = debounce(doSearch, 180);
-
-  function syncURL(){
-    const v = input.value.trim();
-    const url = new URL(location);
-    v ? url.searchParams.set('q', v) : url.searchParams.delete('q');
-    history.replaceState(null,'',url);
+  function search() {
+    const q = normalize(input.value);
+    if (!q) { outCons.textContent = '—'; outCap.textContent = '—'; return; }
+    const hits = DATA.filter(row => {
+      return normalize(firstOf(row, ['compatibilidades','descripcion','referencia','consumible'])).includes(q);
+    });
+    const cons = new Set(), caps = new Set();
+    for (const h of hits) {
+      firstOf(h, ['consumible']).split(/[,;]/).forEach(v => v && cons.add(v.trim()));
+      firstOf(h, ['capacidad']).split(/[,;]/).forEach(v => v && caps.add(v.trim()));
+    }
+    outCons.innerHTML = cons.size ? '<ul>' + [...cons].map(v=>'<li>'+v+'</li>').join('') + '</ul>' : '—';
+    outCap.innerHTML = caps.size ? '<ul>' + [...caps].map(v=>'<li>'+v+'</li>').join('') + '</ul>' : '—';
   }
-  const syncURLdebounced = debounce(syncURL, 180);
 
-  btnClear.addEventListener('click', () => { input.value=''; syncURL(); renderEmpty(); input.focus(); });
-  input.addEventListener('input', () => { search(); syncURLdebounced(); });
-  input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doSearch(); } });
-
+  btnClear.addEventListener('click', () => { input.value=''; outCons.textContent='—'; outCap.textContent='—'; input.focus(); });
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') search(); });
   btnGoogle.addEventListener('click', () => {
-    const q = input.value.trim();
-    if (!q) return;
-    const queries = [
-      q + ' cartuchos OR tinta',
-      q + ' capacidad ml OR páginas',
-      q + ' compatible'
-    ];
-    window.open('https://www.google.com/search?q='+encodeURIComponent(queries.join(' OR ')),'_blank');
+    if (input.value) window.open('https://www.google.com/search?q='+encodeURIComponent(input.value), '_blank');
   });
 
-  function bootFromURL(){
-    const q = new URL(location).searchParams.get('q');
-    if (q) input.value = q;
-  }
-  renderEmpty();
-  bootFromURL();
   loadData();
 })();
 </script>
