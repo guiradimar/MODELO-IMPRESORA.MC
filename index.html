@@ -1,224 +1,196 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BUSCADOR IMPRESORAS</title>
-
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:wght@400;600;700" rel="stylesheet" />
-<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js" defer></script>
-
 <style>
-  :root{--bg1:#0ea5e9;--bg2:#22c55e;--card:#fff;--ink:#0f172a;--muted:#6b7280;
-        --primary:#2563eb;--primary-2:#1d4ed8;--accent:#f97316;--google:#1a73e8;
-        --shadow:0 12px 30px rgba(2,8,23,.18);--radius:18px}
-  *{box-sizing:border-box} html,body{height:100%}
-  body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
-       color:var(--ink);background:linear-gradient(135deg,var(--bg1),var(--bg2)) fixed}
-  .wrap{max-width:1100px;margin:0 auto;padding:40px 18px 80px}
-  h1{margin:0 0 24px;text-align:center;color:#fff;font-weight:900;
-     font-size:clamp(30px,4.8vw,50px);letter-spacing:.3px;text-shadow:0 6px 30px rgba(0,0,0,.25)}
-  .row{display:flex;gap:10px;align-items:center;justify-content:center;margin:0 auto 12px;max-width:1000px;flex-wrap:wrap}
-  .input,.select{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:12px 14px;font-size:16px;outline:none;box-shadow:var(--shadow);min-height:46px}
-  .input{flex:1;min-width:260px}
-  .select{min-width:180px}
-  .btn{display:inline-flex;align-items:center;gap:8px;border:0;border-radius:12px;padding:12px 16px;font-weight:800;color:#fff;cursor:pointer;box-shadow:var(--shadow);transition:.14s}
-  .btn:active{transform:scale(.98)}
-  .btn-search{background:linear-gradient(135deg,var(--primary),var(--primary-2))}
-  .btn-clear{background:linear-gradient(135deg,var(--accent),#fb923c)}
-  .btn-google{background:linear-gradient(135deg,var(--google),#4285f4);display:block;margin:22px auto 0}
-  .grid{display:grid;gap:22px;grid-template-columns:1fr;margin-top:8px}
-  @media(min-width:900px){.grid{grid-template-columns:1fr 1fr}}
-  .card{background:var(--card);border-radius:var(--radius);overflow:hidden;border:1px solid rgba(255,255,255,.6);box-shadow:var(--shadow)}
-  .card header{padding:16px 18px;background:linear-gradient(0deg,#f8fafc,#fff);border-bottom:1px solid #eef2f7;font-weight:900;color:#0f172a;display:flex;justify-content:space-between}
-  .count{color:#64748b;font-weight:800;font-size:13px}
-  .body{padding:18px;min-height:200px;color:#111827;line-height:1.5}
-  .muted{color:var(--muted);font-style:italic}
-  .msg{text-align:center;min-height:22px;margin-bottom:6px;font-size:14px;color:#fef3c7}
-  .msg.err{color:#fee2e2;font-weight:800;text-shadow:0 2px 12px rgba(0,0,0,.25)}
-  .icons{font-family:"Material Symbols Rounded";font-weight:600;font-size:18px;vertical-align:-3px}
+    body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        background: linear-gradient(135deg, #00b4db, #0083b0);
+        color: #333;
+    }
+    h1 {
+        text-align: center;
+        color: white;
+        margin-top: 20px;
+    }
+    .container {
+        max-width: 900px;
+        margin: auto;
+        padding: 20px;
+    }
+    .search-bar {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+    input, select, button {
+        padding: 10px;
+        border-radius: 6px;
+        border: none;
+        font-size: 16px;
+    }
+    input {
+        flex: 2;
+    }
+    select {
+        flex: 1;
+    }
+    button {
+        cursor: pointer;
+    }
+    .btn-buscar {
+        background-color: #0066cc;
+        color: white;
+    }
+    .btn-limpiar {
+        background-color: orange;
+        color: white;
+    }
+    .results {
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+    .card {
+        flex: 1;
+        background-color: white;
+        padding: 15px;
+        border-radius: 8px;
+        box-shadow: 0px 2px 5px rgba(0,0,0,0.2);
+        min-width: 250px;
+    }
+    .card h2 {
+        font-size: 18px;
+        margin-bottom: 10px;
+        border-bottom: 2px solid #eee;
+        padding-bottom: 5px;
+    }
+    ul {
+        padding-left: 20px;
+        list-style-type: disc;
+    }
+    .google-btn {
+        display: block;
+        margin: 20px auto;
+        padding: 10px 15px;
+        background-color: red;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 16px;
+        cursor: pointer;
+    }
+    .mensaje-error {
+        text-align: center;
+        color: white;
+        font-weight: bold;
+        margin-bottom: 10px;
+    }
 </style>
 </head>
 <body>
-  <div class="wrap">
     <h1>BUSCADOR IMPRESORAS</h1>
-
-    <div class="row" role="search">
-      <input id="q" class="input" type="text" placeholder="Ej: TS3350, MG 3650, DeskJet 3747, F2140, PG-545…" autocomplete="off" />
-      <select id="brand" class="select" title="Marca">
-        <option value="">Todas las marcas</option>
-      </select>
-      <button id="btnSearch" class="btn btn-search"><span class="icons">search</span>Buscar</button>
-      <button id="btnClear" class="btn btn-clear"><span class="icons">backspace</span>Limpiar</button>
+    <div class="container">
+        <div class="search-bar">
+            <input type="text" id="searchInput" placeholder="Introduce modelo de impresora...">
+            <button class="btn-buscar" onclick="buscar()">Buscar</button>
+            <button class="btn-limpiar" onclick="limpiar()">Limpiar</button>
+        </div>
+        <p id="mensaje" class="mensaje-error"></p>
+        <div class="results">
+            <div class="card">
+                <h2>CONSUMIBLES</h2>
+                <ul id="consumibles"></ul>
+            </div>
+            <div class="card">
+                <h2>CAPACIDAD</h2>
+                <ul id="capacidades"></ul>
+            </div>
+        </div>
+        <button class="google-btn" onclick="buscarGoogle()">Buscar en Google</button>
     </div>
-    <div id="msg" class="msg"></div>
-
-    <div class="grid">
-      <section class="card">
-        <header><span><span class="icons">ink_pen</span> CONSUMIBLES</span><span id="count-cons" class="count">—</span></header>
-        <div id="consumibles" class="body muted">—</div>
-      </section>
-      <section class="card">
-        <header><span><span class="icons">water_drop</span> CAPACIDAD</span><span id="count-cap" class="count">—</span></header>
-        <div id="capacidad" class="body muted">—</div>
-      </section>
-    </div>
-
-    <button id="btnGoogle" class="btn btn-google"><span class="icons">travel_explore</span> Buscar en Google</button>
-  </div>
 
 <script>
-const CSV_URL = "./listado_precios.csv"; // DEBE estar al lado del index.html
-let DATA = [];
-
-const $ = s => document.querySelector(s);
-
-// Normaliza texto para comparar sin acentos/ruido y unifica alias
-const normalize = (s="") => s.toLowerCase()
-  .replace(/[<>[\](){}`]/g," ")
-  .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
-  .replace(/desk\s*jet/g,"deskjet").replace(/laser\s*jet/g,"laserjet").replace(/office\s*jet/g,"officejet")
-  .replace(/work\s*cent(re|er)/g,"workcentre")
-  .replace(/pixma\s*ts/g,"ts").replace(/pixma\s*mg/g,"mg").replace(/pixma\s*mx/g,"mx").replace(/pixma\s*tr/g,"tr")
-  .replace(/[^a-z0-9\s-]/g," ").replace(/\s+/g," ").trim();
-
-// Mapeo flexible de cabeceras
-const FIELDS = [
-  ["referencia",["referencia","reference","ref","codigo","código"]],
-  ["consumibles",["consumibles","consumible","cartucho","tóner","toner"]],
-  ["capacidad",["capacidad","cap","yield"]],
-  ["compatibilidades",["compatibilidades","compatibilidad","compat","models","modelos"]],
-  ["descripcion",["descripcion","descripción","desc","detalle","producto"]]
-];
-function getField(row, stdKey){
-  const opts = FIELDS.find(x=>x[0]===stdKey)[1];
-  for (const k of Object.keys(row)){
-    const nk = (k||"").toString().trim().toLowerCase();
-    if (opts.includes(nk)) return row[k] ?? "";
-  }
-  return "";
-}
-
-// Detección de marca por contenido
-function detectBrand(row){
-  const blob=(getField(row,"descripcion")+" "+getField(row,"compatibilidades")+" "+getField(row,"referencia")).toLowerCase();
-  if (/(^|\s)canon\b|pixma|cli|pgi|pg-?/.test(blob)) return "Canon";
-  if (/\bhp\b|deskjet|laserjet|officejet|envy|^(c|cc|cn|ce|cf|ch|cb|cd)\d+/i.test(blob)) return "HP";
-  if (/epson|ecotank|workforce|^t\d{2,3}/i.test(blob)) return "Epson";
-  if (/brother|\btn-|\bdr-|\blc\b|\bmfc\b|\bdcp\b|\bhl-/i.test(blob)) return "Brother";
-  if (/lexmark|\b50f|\b51f|\b52d|\b71b/i.test(blob)) return "Lexmark";
-  if (/xerox|workcentre|versalink|altalink/i.test(blob)) return "Xerox";
-  return "Otros";
-}
-
-// Parseo de la query: letras+número pegados o separados, o número solo
-function parseQuery(raw){
-  const n = normalize(raw);
-  const tokens = n.split(" ").filter(Boolean);
-  const series=[], nums=[];
-  for (const t of tokens){
-    if (/^\d{2,7}$/.test(t)) nums.push(t);
-    else if (/^[a-z]{1,12}$/.test(t)) series.push(t);
-    else { const m=t.match(/^([a-z]{1,12})\s*(\d{2,7})/); if (m){series.push(m[1]); nums.push(m[2]);} }
-  }
-  const drop=new Set(["canon","hp","epson","brother","lexmark","xerox","ricoh","kyocera","oki","samsung","pixma"]);
-  return {series:series.filter(s=>!drop.has(s)), nums, raw:n};
-}
-
-// Coincidencia por compat/desc/ref; con fallback por subcadena si todo falla
-function recordMatches(row, q, brandFilter){
-  const compat=normalize(getField(row,"compatibilidades"));
-  const desc  =normalize(getField(row,"descripcion"));
-  const ref   =normalize(getField(row,"referencia"));
-  const brand =detectBrand(row);
-  if (brandFilter && brand!==brandFilter) return false;
-
-  if (q.series.length && q.nums.length){
-    const need=[...q.series,...q.nums];
-    const okC=need.every(t=>compat.includes(t));
-    const okD=okC||need.every(t=>desc.includes(t));
-    if (okC||okD) return true;
-  }
-  if (!q.series.length && q.nums.length){
-    const n=q.nums[0];
-    if (compat.includes(n)||desc.includes(n)) return true;
-  }
-  if (ref && ref.includes(q.raw)) return true;
-
-  const full = normalize(Object.values(row).join(" "));
-  if (q.raw && full.includes(q.raw)) return true;
-  for (const n of q.nums){ if (full.includes(n)) return true; }
-
-  return false;
-}
-
-function render(consList, capList){
-  const outC=$("#consumibles"), outK=$("#capacidad");
-  const c1=$("#count-cons"), c2=$("#count-cap");
-  const list=a=>a.length?("<ul>"+a.map(x=>"<li>"+escapeHtml(x)+"</li>").join("")+"</ul>"):"<span class='muted'>Sin resultados.</span>";
-  outC.innerHTML=list(consList); outK.innerHTML=list(capList);
-  outC.classList.toggle("muted",!consList.length); outK.classList.toggle("muted",!capList.length);
-  c1.textContent=String(consList.length||"—"); c2.textContent=String(capList.length||"—");
-}
-function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]))}
-function setMsg(t="",err=false){const el=$("#msg"); el.textContent=t; el.classList.toggle("err",!!err);}
-
-// Carga CSV: forzamos ';' y hacemos fallback a ','
-async function loadData(){
-  const parse = (delim) => new Promise((resolve,reject)=>{
-    Papa.parse(CSV_URL,{
-      download:true, header:true, delimiter:delim, dynamicTyping:false, skipEmptyLines:true,
-      complete: r => resolve(r.data), error: reject
+async function cargarDatos() {
+    const response = await fetch('listado_precios.csv');
+    const data = await response.text();
+    const filas = data.split('\n').map(fila => fila.split(','));
+    const cabeceras = filas[0];
+    return filas.slice(1).map(f => {
+        let obj = {};
+        cabeceras.forEach((col, i) => obj[col.trim()] = f[i] ? f[i].trim() : '');
+        return obj;
     });
-  });
-  let data = await parse(';');
-  if (!data || data.length < 1) data = await parse(','); // fallback
-  return data;
 }
 
-function populateBrands(rows){
-  const brands = new Set(rows.map(detectBrand));
-  const order = ["Canon","HP","Epson","Brother","Lexmark","Xerox","Otros"];
-  const ordered = [...order.filter(b=>brands.has(b)), ...[...brands].filter(b=>!order.includes(b))];
-  const sel=$("#brand"); ordered.forEach(b=>{const o=document.createElement("option");o.value=b;o.textContent=b;sel.appendChild(o);});
+async function buscar() {
+    const input = document.getElementById('searchInput').value.trim().toLowerCase();
+    const mensaje = document.getElementById('mensaje');
+    const consumiblesLista = document.getElementById('consumibles');
+    const capacidadesLista = document.getElementById('capacidades');
+    consumiblesLista.innerHTML = '';
+    capacidadesLista.innerHTML = '';
+    mensaje.textContent = '';
+
+    if (!input) {
+        mensaje.textContent = "Introduce un modelo para buscar.";
+        return;
+    }
+
+    const datos = await cargarDatos();
+    const encontrados = datos.filter(item => 
+        item.Compatibilidades.toLowerCase().includes(input) || 
+        item.Descripción.toLowerCase().includes(input)
+    );
+
+    if (encontrados.length === 0) {
+        mensaje.textContent = "Modelo no encontrado. Pincha en el botón Google.";
+        return;
+    }
+
+    const consumiblesSet = new Set();
+    const capacidadesSet = new Set();
+
+    encontrados.forEach(item => {
+        if (item.Referencia) consumiblesSet.add(item.Referencia);
+        if (item.Consumibles) consumiblesSet.add(item.Consumibles);
+        if (item.Capacidad) capacidadesSet.add(item.Capacidad);
+    });
+
+    consumiblesSet.forEach(c => {
+        if (c) {
+            let li = document.createElement('li');
+            li.textContent = c;
+            consumiblesLista.appendChild(li);
+        }
+    });
+
+    capacidadesSet.forEach(cap => {
+        if (cap) {
+            let li = document.createElement('li');
+            li.textContent = cap;
+            capacidadesLista.appendChild(li);
+        }
+    });
 }
 
-function doSearch(){
-  const raw=$("#q").value.trim(); const brand=$("#brand").value;
-  setMsg(""); if (!raw){render([],[]);return;}
-  const q=parseQuery(raw);
-  const hits=DATA.filter(r=>recordMatches(r,q,brand||null));
-
-  if (!hits.length){ render([],[]); setMsg('Modelo no encontrado. Pinche en el botón Google.', true); return; }
-
-  const setC=new Set(), setK=new Set();
-  for (const r of hits){
-    const cons=(getField(r,"consumibles")||"").split(/\s*[;,/|]\s*/).filter(Boolean);
-    const cap =(getField(r,"capacidad") ||"").split(/\s*[;,/|]\s*/).filter(Boolean);
-    cons.forEach(x=>setC.add(x)); cap.forEach(x=>setK.add(x));
-  }
-  render([...setC],[...setK]);
+function limpiar() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('consumibles').innerHTML = '';
+    document.getElementById('capacidades').innerHTML = '';
+    document.getElementById('mensaje').textContent = '';
 }
 
-function bindUI(){
-  $("#btnSearch").addEventListener("click",doSearch);
-  $("#btnClear").addEventListener("click",()=>{$("#q").value="";$("#brand").value="";setMsg("");render([],[]);$("#q").focus();});
-  $("#q").addEventListener("keydown",e=>{if(e.key==="Enter")doSearch();});
-  $("#btnGoogle").addEventListener("click",()=>{const v=$("#q").value.trim(); if(v) window.open("https://www.google.com/search?q="+encodeURIComponent(v),"_blank");});
+function buscarGoogle() {
+    const input = document.getElementById('searchInput').value.trim();
+    if (input) {
+        window.open(`https://www.google.com/search?q=${encodeURIComponent(input)} impresora`, '_blank');
+    }
 }
-
-window.addEventListener("load", async ()=>{
-  try{
-    DATA=await loadData();
-    console.log("DATA length:", DATA.length);
-    console.log("Headers detectados:", DATA[0] ? Object.keys(DATA[0]) : []);
-    populateBrands(DATA);
-  }catch(e){
-    console.error(e);
-    setMsg("No se pudo cargar ./listado_precios.csv (¿misma carpeta? ¿UTF-8?).", true);
-  }
-  bindUI();
-});
 </script>
 </body>
 </html>
+
