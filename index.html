@@ -9,28 +9,44 @@
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js" defer></script>
 
 <style>
-  :root{--bg1:#0ea5e9;--bg2:#22c55e;--card:#fff;--ink:#0f172a;--muted:#6b7280;
-        --primary:#2563eb;--primary-2:#1d4ed8;--accent:#f97316;--google:#1a73e8;
-        --shadow:0 12px 30px rgba(2,8,23,.18);--radius:18px}
+  :root{
+    --bg1:#0ea5e9;--bg2:#22c55e;--card:#fff;--ink:#0f172a;--muted:#6b7280;
+    --primary:#2563eb;--primary-2:#1d4ed8;--accent:#f97316;--google:#1a73e8;
+    --shadow:0 12px 30px rgba(2,8,23,.18);--radius:18px
+  }
   *{box-sizing:border-box} html,body{height:100%}
-  body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
-       color:var(--ink);background:linear-gradient(135deg,var(--bg1),var(--bg2)) fixed}
+  body{
+    margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
+    color:var(--ink);background:linear-gradient(135deg,var(--bg1),var(--bg2)) fixed
+  }
   .wrap{max-width:1100px;margin:0 auto;padding:40px 18px 80px}
   h1{margin:0 0 24px;text-align:center;color:#fff;font-weight:900;
      font-size:clamp(30px,4.8vw,50px);letter-spacing:.3px;text-shadow:0 6px 30px rgba(0,0,0,.25)}
   .row{display:flex;gap:10px;align-items:center;justify-content:center;margin:0 auto 12px;max-width:1000px;flex-wrap:wrap}
-  .input,.select{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:12px 14px;font-size:16px;outline:none;box-shadow:var(--shadow);min-height:46px}
+  .input,.select{
+    background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:12px 14px;
+    font-size:16px;outline:none;box-shadow:var(--shadow);min-height:46px
+  }
   .input{flex:1;min-width:260px}
   .select{min-width:180px}
-  .btn{display:inline-flex;align-items:center;gap:8px;border:0;border-radius:12px;padding:12px 16px;font-weight:800;color:#fff;cursor:pointer;box-shadow:var(--shadow);transition:.14s}
+  .btn{
+    display:inline-flex;align-items:center;gap:8px;border:0;border-radius:12px;
+    padding:12px 16px;font-weight:800;color:#fff;cursor:pointer;box-shadow:var(--shadow);transition:.14s
+  }
   .btn:active{transform:scale(.98)}
   .btn-search{background:linear-gradient(135deg,var(--primary),var(--primary-2))}
   .btn-clear{background:linear-gradient(135deg,var(--accent),#fb923c)}
   .btn-google{background:linear-gradient(135deg,var(--google),#4285f4);display:block;margin:22px auto 0}
   .grid{display:grid;gap:22px;grid-template-columns:1fr;margin-top:8px}
   @media(min-width:900px){.grid{grid-template-columns:1fr 1fr}}
-  .card{background:var(--card);border-radius:var(--radius);overflow:hidden;border:1px solid rgba(255,255,255,.6);box-shadow:var(--shadow)}
-  .card header{padding:16px 18px;background:linear-gradient(0deg,#f8fafc,#fff);border-bottom:1px solid #eef2f7;font-weight:900;color:#0f172a;display:flex;justify-content:space-between}
+  .card{
+    background:var(--card);border-radius:var(--radius);overflow:hidden;
+    border:1px solid rgba(255,255,255,.6);box-shadow:var(--shadow)
+  }
+  .card header{
+    padding:16px 18px;background:linear-gradient(0deg,#f8fafc,#fff);
+    border-bottom:1px solid #eef2f7;font-weight:900;color:#0f172a;display:flex;justify-content:space-between
+  }
   .count{color:#64748b;font-weight:800;font-size:13px}
   .body{padding:18px;min-height:200px;color:#111827;line-height:1.5}
   .muted{color:var(--muted);font-style:italic}
@@ -68,7 +84,7 @@
   </div>
 
 <script>
-const CSV_URL = "./listado_precios.csv"; // debe estar al lado del index.html
+const CSV_URL = "./listado_precios.csv"; // debe estar al lado de este index.html
 let DATA = [];
 
 const $ = s => document.querySelector(s);
@@ -123,20 +139,30 @@ function parseQuery(raw){
   for (const t of tokens){
     if (/^\d{2,7}$/.test(t)) nums.push(t);
     else if (/^[a-z]{1,12}$/.test(t)) series.push(t);
-    else { const m=t.match(/^([a-z]{1,12})\s*(\d{2,7})$/); if (m){series.push(m[1]); nums.push(m[2]);} }
+    else {
+      const m=t.match(/^([a-z]{1,12})\s*(\d{2,7})$/);
+      if (m){series.push(m[1]); nums.push(m[2]);}
+    }
   }
   const drop=new Set(["canon","hp","epson","brother","lexmark","xerox","ricoh","kyocera","oki","samsung","pixma"]);
   return { refOnly:false, ref:"", series:series.filter(s=>!drop.has(s)), nums, raw:n };
 }
 
-// extrae modelos {serie,num} desde compatibilidades
+// convierte etiquetas <...> a token de serie y extrae modelos {serie,num}
 function extractModelsFromCompat(row){
-  const compat = normalize(getField(row,"compatibilidades"));
-  if (!compat) return [];
-  const cleaned = compat.replace(/<[^>]+>/g," ").replace(/[;,|]/g," ").replace(/\s+/g," ").trim();
+  const raw = getField(row,"compatibilidades");
+  if (!raw) return [];
+  // convierte etiquetas a tokens de serie (no las borra)
+  let compat = raw.replace(/<([^>]+)>/g, (_, inside) => {
+    const t = normalize(inside); // "pixma ts" -> "ts", etc.
+    return " " + t + " ";
+  });
+  // normaliza resto
+  compat = normalize(compat).replace(/[;,|]/g," ").replace(/\s+/g," ").trim();
+
   const out = [];
   const re = /([a-z]{1,12})\s*(\d{2,7})/g;
-  let m; while ((m = re.exec(cleaned)) !== null) out.push({serie:m[1], num:m[2]});
+  let m; while ((m = re.exec(compat)) !== null) out.push({serie:m[1], num:m[2]});
   return out;
 }
 function matchExactModel(models, q){
@@ -155,16 +181,18 @@ function recordMatches(row, q, brandFilter){
     return ref.includes(normalize(q.ref));
   }
 
+  // serie + número -> SOLO compat; si no tiene compat, fallback muy conservador a descripción
   if (q.series.length && q.nums.length){
     const models = extractModelsFromCompat(row);
     if (matchExactModel(models, q)) return true;
-    // fallback conservador si compat está vacío
+
     const desc = normalize(getField(row,"descripcion"));
     const need = [...q.series, ...q.nums];
     if (!models.length && need.every(tok => desc.includes(tok))) return true;
     return false;
   }
 
+  // solo número -> debe existir como modelo en compat (no vale subcadena suelta)
   if (!q.series.length && q.nums.length){
     const num = q.nums[0];
     const models = extractModelsFromCompat(row);
