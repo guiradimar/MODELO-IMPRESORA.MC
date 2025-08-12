@@ -44,7 +44,7 @@
     <h1>BUSCADOR IMPRESORAS</h1>
 
     <div class="row" role="search">
-      <input id="q" class="input" type="text" placeholder="Ej: TS3350, MG 3650, DeskJet 3747, F2140, PG-545…" autocomplete="off" />
+      <input id="q" class="input" type="text" placeholder="Ej: TS3350, MG 3650, DeskJet 3747, F2140…" autocomplete="off" />
       <select id="brand" class="select" title="Marca">
         <option value="">Todas las marcas</option>
       </select>
@@ -68,26 +68,36 @@
   </div>
 
 <script>
-const CSV_URL = "./listado_precios.csv"; // DEBE estar al lado del index.html
+/* ================== Config ================== */
+const CSV_URL = "./listado_precios.csv"; // mismo directorio que index.html
 let DATA = [];
 
-// ---------- helpers ----------
+// Series permitidas por marca (para búsquedas SOLO por número)
+const SERIES_BY_BRAND = {
+  HP: new Set(["deskjet","officejet","laserjet","envy","designjet","photosmart","smarttank"]),
+  Canon: new Set(["ts","mg","mx","tr","ip","mp","ix","lbp","maxify","selphy"]),
+  Epson: new Set(["stylus","workforce","expression","xp","ecotank","l","wf"]),
+  Brother: new Set(["hl","dcp","mfc","fax"]),
+  Lexmark: new Set(["ms","mx","cs","cx","e","t"]),
+  Xerox: new Set(["workcentre","versalink","altalink","phaser"])
+};
+
+/* ================== Utils ================== */
 const $ = s => document.querySelector(s);
 
-// Normaliza: acentos, alias, y SEPARA letras/números pegados o con guión
+// Normaliza: acentos, alias, y separa letras/números pegados o con guión
 const normalize = (s="") => s.toLowerCase()
   .replace(/[<>[\](){}`]/g," ")
   .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
-  // alias habituales
+  // alias de series y marcas comunes
   .replace(/desk\s*jet/g,"deskjet").replace(/laser\s*jet/g,"laserjet").replace(/office\s*jet/g,"officejet")
   .replace(/work\s*cent(re|er)/g,"workcentre")
   .replace(/pixma\s*ts/g,"ts").replace(/pixma\s*mg/g,"mg").replace(/pixma\s*mx/g,"mx").replace(/pixma\s*tr/g,"tr")
-  // separa letras y números pegados o con guión: ts-3350 => ts 3350, tr4751 => tr 4751, deskjet3747 => deskjet 3747
+  // ts-3350 | ts3350 | deskjet4220 => ts 3350 | deskjet 4220
   .replace(/([a-z])[-]?(\d)/g,"$1 $2")
-  // limpia
   .replace(/[^a-z0-9\s-]/g," ").replace(/\s+/g," ").trim();
 
-// Mapeo flexible de cabeceras
+// Cabeceras flexibles
 const FIELDS = [
   ["referencia",["referencia","reference","ref","codigo","código"]],
   ["consumibles",["consumibles","consumible","cartucho","tóner","toner"]],
@@ -104,11 +114,10 @@ function getField(row, stdKey){
   return "";
 }
 
-// Detección de marca para el filtro
 function detectBrand(row){
   const blob=(getField(row,"descripcion")+" "+getField(row,"compatibilidades")+" "+getField(row,"referencia")).toLowerCase();
   if (/(^|\s)canon\b|pixma|cli|pgi|pg-?/.test(blob)) return "Canon";
-  if (/\bhp\b|deskjet|laserjet|officejet|envy|^(c|cc|cn|ce|cf|ch|cb|cd)\d+/i.test(blob)) return "HP";
+  if (/\bhp\b|deskjet|laserjet|officejet|envy/i.test(blob)) return "HP";
   if (/epson|ecotank|workforce|^t\d{2,3}/i.test(blob)) return "Epson";
   if (/brother|\btn-|\bdr-|\blc\b|\bmfc\b|\bdcp\b|\bhl-/i.test(blob)) return "Brother";
   if (/lexmark|\b50f|\b51f|\b52d|\b71b/i.test(blob)) return "Lexmark";
@@ -116,81 +125,65 @@ function detectBrand(row){
   return "Otros";
 }
 
-// ---------- extracción robusta de MODELOS (serie+numero) ----------
-// 1) Convertimos etiquetas <...> a tokens de serie (no se pierden)
+/* ======== Extracción robusta de MODELOS desde compat ======== */
+// Convierte etiquetas <Pixma TS> en texto normalizable
 function compatAsText(row){
   const raw = getField(row,"compatibilidades");
   if (!raw) return "";
   return raw.replace(/<([^>]+)>/g, (_, inside) => " "+normalize(inside)+" ");
 }
-// 2) Lista de {serie,num} desde compat (y sin perder casos pegados)
+// Devuelve [{serie,num}, ...] desde compat
 function extractModelsFromCompat(row){
   const compat = normalize(compatAsText(row))
     .replace(/[;,|]/g," ").replace(/\s+/g," ").trim();
   const out = [];
-  const re = /([a-z]{1,12})\s*(\d{2,7})/g; // series cortas + 2..7 dígitos
+  const re = /([a-z]{1,12})\s*(\d{2,7})/g; // serie corta + numero
   let m; while ((m = re.exec(compat)) !== null) out.push({serie:m[1], num:m[2]});
   return out;
 }
 
-// ---------- parseo de la query ----------
+/* ================== Query ================== */
 function parseQuery(raw){
   const n = normalize(raw);
   const tokens = n.split(" ").filter(Boolean);
-  const refOnly = n.startsWith("ref:");
-  if (refOnly) return { refOnly:true, ref:n.slice(4).trim(), series:[], nums:[], raw:n };
-
   const series=[], nums=[];
   for (const t of tokens){
     if (/^\d{2,7}$/.test(t)) nums.push(t);
     else if (/^[a-z]{1,12}$/.test(t)) series.push(t);
     else { const m=t.match(/^([a-z]{1,12})\s*(\d{2,7})$/); if (m){series.push(m[1]); nums.push(m[2]);} }
   }
-  const drop=new Set(["canon","hp","epson","brother","lexmark","xerox","ricoh","kyocera","oki","samsung","pixma"]);
-  return { refOnly:false, ref:"", series:series.filter(s=>!drop.has(s)), nums, raw:n };
+  const drop=new Set(["canon","hp","epson","brother","lexmark","xerox","pixma"]);
+  return { series:series.filter(s=>!drop.has(s)), nums, raw:n };
 }
 
-function matchExactModel(models, q){
-  if (!q.series.length || !q.nums.length) return false;
-  const aimS=new Set(q.series), aimN=new Set(q.nums);
-  return models.some(m => aimS.has(m.serie) && aimN.has(m.num));
-}
-
-// Coincidencia estricta por modelo (compat) y fallback conservador a descripción
+/* ================== Match minimalista (4 puntos) ================== */
 function recordMatches(row, q, brandFilter){
-  const brand = detectBrand(row);
-  if (brandFilter && brand !== brandFilter) return false;
-
-  if (q.refOnly){
-    const ref = normalize(getField(row,"referencia"));
-    return ref.includes(normalize(q.ref));
-  }
-
-  // serie + número
+  // 1) serie + número: exige el par exacto en compat
   if (q.series.length && q.nums.length){
     const models = extractModelsFromCompat(row);
-    if (matchExactModel(models, q)) return true;
-
-    // Fallback SOLO si no tiene compatibilidades
-    if (!models.length){
-      const desc = normalize(getField(row,"descripcion"));
-      const need=[...q.series, ...q.nums];
-      if (need.every(tok => desc.includes(tok))) return true;
-    }
-    return false;
+    const aimS = new Set(q.series), aimN = new Set(q.nums);
+    return models.some(m => aimS.has(m.serie) && aimN.has(m.num));
   }
 
-  // número sin serie -> requiere que el número figure como modelo en compat
+  // 2) solo número: exige que el número exista en compat
+  //    y si hay marca seleccionada, la serie debe pertenecer a esa marca
   if (!q.series.length && q.nums.length){
     const num = q.nums[0];
     const models = extractModelsFromCompat(row);
-    return models.some(m => m.num === num);
+    const candidates = models.filter(m => m.num === num);
+    if (!candidates.length) return false;
+
+    if (brandFilter && SERIES_BY_BRAND[brandFilter]){
+      return candidates.some(m => SERIES_BY_BRAND[brandFilter].has(m.serie));
+    }
+    return true;
   }
 
+  // 3) sin modelo explícito: no aceptamos por subcadenas
   return false;
 }
 
-// ---------- render ----------
+/* ================== Render ================== */
 function render(consList, capList){
   const outC=$("#consumibles"), outK=$("#capacidad");
   const c1=$("#count-cons"), c2=$("#count-cap");
@@ -202,7 +195,7 @@ function render(consList, capList){
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]))}
 function setMsg(t="",err=false){const el=$("#msg"); el.textContent=t; el.classList.toggle("err",!!err);}
 
-// ---------- carga CSV ----------
+/* ================== Carga CSV ================== */
 async function loadData(){
   const parse=(delim)=>new Promise((resolve,reject)=>{
     Papa.parse(CSV_URL,{download:true,header:true,delimiter:delim,dynamicTyping:false,skipEmptyLines:true,
@@ -218,7 +211,7 @@ function populateBrands(rows){
   const sel=$("#brand"); ordered.forEach(b=>{const o=document.createElement("option");o.value=b;o.textContent=b;sel.appendChild(o);});
 }
 
-// ---------- búsqueda ----------
+/* ================== Búsqueda ================== */
 function doSearch(){
   const raw=$("#q").value.trim(); const brand=$("#brand").value;
   setMsg(""); if (!raw){render([],[]);return;}
@@ -231,7 +224,7 @@ function doSearch(){
     return;
   }
 
-  // Agrupa: consumible -> capacidades (sin duplicados)
+  // Agrupa: consumible -> capacidades (sin duplicados) y salida breve
   const byCons=new Map();
   for (const r of hits){
     const cons=(getField(r,"consumibles")||"").split(/\s*[;,/|]\s*/).filter(Boolean);
@@ -246,13 +239,13 @@ function doSearch(){
   for (const [c,ks] of byCons.entries()){
     consumibles.push(c);
     for (const k of ks) capacidades.add(k);
-    if (consumibles.length>=30) break; // salida breve
+    if (consumibles.length>=30) break; // listado escueto
   }
 
   render(consumibles,[...capacidades]);
 }
 
-// ---------- UI ----------
+/* ================== UI ================== */
 function bindUI(){
   $("#btnSearch").addEventListener("click",doSearch);
   $("#btnClear").addEventListener("click",()=>{$("#q").value="";$("#brand").value="";setMsg("");render([],[]);$("#q").focus();});
@@ -263,8 +256,6 @@ function bindUI(){
 window.addEventListener("load", async ()=>{
   try{
     DATA=await loadData();
-    console.log("DATA length:", DATA.length);
-    console.log("Headers detectados:", DATA[0]?Object.keys(DATA[0]):[]);
     populateBrands(DATA);
   }catch(e){
     console.error(e);
