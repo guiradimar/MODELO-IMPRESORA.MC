@@ -201,7 +201,8 @@ async function loadData(){
     Papa.parse(CSV_URL,{download:true,header:true,delimiter:delim,dynamicTyping:false,skipEmptyLines:true,
       complete:r=>resolve(r.data),error:reject});
   });
-  let data=await parse(';'); if (!data || data.length<1) data=await parse(',');
+  let data=await parse(';');
+  if (!data || data.length<1 || Object.keys(data[0]||{}).length<2) data=await parse(',');
   return data;
 }
 function populateBrands(rows){
