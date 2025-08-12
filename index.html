@@ -87,7 +87,7 @@ const $ = s => document.querySelector(s);
 
 // Normaliza: acentos, alias, y separa letras/números pegados o con guión
 const normalize = (s="") => s.toLowerCase()
-  .replace(/[<>[\](){}`]/g," ")
+  .replace(/[<>\[\](){}`]/g," ")
   .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
   // alias de series y marcas comunes
   .replace(/desk\s*jet/g,"deskjet").replace(/laser\s*jet/g,"laserjet").replace(/office\s*jet/g,"officejet")
@@ -192,7 +192,7 @@ function render(consList, capList){
   outC.classList.toggle("muted",!consList.length); outK.classList.toggle("muted",!capList.length);
   c1.textContent=String(consList.length||"—"); c2.textContent=String(capList.length||"—");
 }
-function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]))}
+function escapeHtml(s){return String(s).replace(/[&<>\"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]))}
 function setMsg(t="",err=false){const el=$("#msg"); el.textContent=t; el.classList.toggle("err",!!err);}
 
 /* ================== Carga CSV ================== */
@@ -201,7 +201,8 @@ async function loadData(){
     Papa.parse(CSV_URL,{download:true,header:true,delimiter:delim,dynamicTyping:false,skipEmptyLines:true,
       complete:r=>resolve(r.data),error:reject});
   });
-  let data=await parse(';'); if (!data || data.length<1) data=await parse(',');
+  let data=await parse(';');
+  if (!data || data.length<1 || Object.keys(data[0]||{}).length<2) data=await parse(',');
   return data;
 }
 function populateBrands(rows){
