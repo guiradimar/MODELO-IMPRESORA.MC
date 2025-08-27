@@ -1,269 +1,337 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>BUSCADOR IMPRESORAS</title>
-
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:wght@400;600;700" rel="stylesheet" />
-<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js" defer></script>
-
-<style>
-  :root{--bg1:#0ea5e9;--bg2:#22c55e;--card:#fff;--ink:#0f172a;--muted:#6b7280;
-        --primary:#2563eb;--primary-2:#1d4ed8;--accent:#f97316;--google:#1a73e8;
-        --shadow:0 12px 30px rgba(2,8,23,.18);--radius:18px}
-  *{box-sizing:border-box} html,body{height:100%}
-  body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
-       color:var(--ink);background:linear-gradient(135deg,var(--bg1),var(--bg2)) fixed}
-  .wrap{max-width:1100px;margin:0 auto;padding:40px 18px 80px}
-  h1{margin:0 0 24px;text-align:center;color:#fff;font-weight:900;
-     font-size:clamp(30px,4.8vw,50px);letter-spacing:.3px;text-shadow:0 6px 30px rgba(0,0,0,.25)}
-  .row{display:flex;gap:10px;align-items:center;justify-content:center;margin:0 auto 12px;max-width:1000px;flex-wrap:wrap}
-  .input,.select{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:12px 14px;font-size:16px;outline:none;box-shadow:var(--shadow);min-height:46px}
-  .input{flex:1;min-width:260px}
-  .select{min-width:180px}
-  .btn{display:inline-flex;align-items:center;gap:8px;border:0;border-radius:12px;padding:12px 16px;font-weight:800;color:#fff;cursor:pointer;box-shadow:var(--shadow);transition:.14s}
-  .btn:active{transform:scale(.98)}
-  .btn-search{background:linear-gradient(135deg,var(--primary),var(--primary-2))}
-  .btn-clear{background:linear-gradient(135deg,var(--accent),#fb923c)}
-  .btn-google{background:linear-gradient(135deg,var(--google),#4285f4);display:block;margin:22px auto 0}
-  .grid{display:grid;gap:22px;grid-template-columns:1fr;margin-top:8px}
-  @media(min-width:900px){.grid{grid-template-columns:1fr 1fr}}
-  .card{background:var(--card);border-radius:var(--radius);overflow:hidden;border:1px solid rgba(255,255,255,.6);box-shadow:var(--shadow)}
-  .card header{padding:16px 18px;background:linear-gradient(0deg,#f8fafc,#fff);border-bottom:1px solid #eef2f7;font-weight:900;color:#0f172a;display:flex;justify-content:space-between}
-  .count{color:#64748b;font-weight:800;font-size:13px}
-  .body{padding:18px;min-height:200px;color:#111827;line-height:1.5}
-  .muted{color:var(--muted);font-style:italic}
-  .msg{text-align:center;min-height:22px;margin-bottom:6px;font-size:14px;color:#fef3c7}
-  .msg.err{color:#fee2e2;font-weight:800;text-shadow:0 2px 12px rgba(0,0,0,.25)}
-  .icons{font-family:"Material Symbols Rounded";font-weight:600;font-size:18px;vertical-align:-3px}
-</style>
-</head>
-<body>
-  <div class="wrap">
-    <h1>BUSCADOR IMPRESORAS</h1>
-
-    <div class="row" role="search">
-      <input id="q" class="input" type="text" placeholder="Ej: TS3350, MG 3650, DeskJet 3747, F2140…" autocomplete="off" />
-      <select id="brand" class="select" title="Marca">
-        <option value="">Todas las marcas</option>
-      </select>
-      <button id="btnSearch" class="btn btn-search"><span class="icons">search</span>Buscar</button>
-      <button id="btnClear" class="btn btn-clear"><span class="icons">backspace</span>Limpiar</button>
-    </div>
-    <div id="msg" class="msg"></div>
-
-    <div class="grid">
-      <section class="card">
-        <header><span><span class="icons">ink_pen</span> CONSUMIBLES</span><span id="count-cons" class="count">—</span></header>
-        <div id="consumibles" class="body muted">—</div>
-      </section>
-      <section class="card">
-        <header><span><span class="icons">water_drop</span> CAPACIDAD</span><span id="count-cap" class="count">—</span></header>
-        <div id="capacidad" class="body muted">—</div>
-      </section>
-    </div>
-
-    <button id="btnGoogle" class="btn btn-google"><span class="icons">travel_explore</span> Buscar en Google</button>
-  </div>
-
-<script>
-/* ================== Config ================== */
-const CSV_URL = "./listado_precios.csv"; // mismo directorio que index.html
-let DATA = [];
-
-// Series permitidas por marca (para búsquedas SOLO por número)
-const SERIES_BY_BRAND = {
-  HP: new Set(["deskjet","officejet","laserjet","envy","designjet","photosmart","smarttank"]),
-  Canon: new Set(["ts","mg","mx","tr","ip","mp","ix","lbp","maxify","selphy"]),
-  Epson: new Set(["stylus","workforce","expression","xp","ecotank","l","wf"]),
-  Brother: new Set(["hl","dcp","mfc","fax"]),
-  Lexmark: new Set(["ms","mx","cs","cx","e","t"]),
-  Xerox: new Set(["workcentre","versalink","altalink","phaser"])
-};
-
-/* ================== Utils ================== */
-const $ = s => document.querySelector(s);
-
-// Normaliza: acentos, alias, y separa letras/números pegados o con guión
-const normalize = (s="") => s.toLowerCase()
-  .replace(/[<>\[\](){}`]/g," ")
-  .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
-  // alias de series y marcas comunes
-  .replace(/desk\s*jet/g,"deskjet").replace(/laser\s*jet/g,"laserjet").replace(/office\s*jet/g,"officejet")
-  .replace(/work\s*cent(re|er)/g,"workcentre")
-  .replace(/pixma\s*ts/g,"ts").replace(/pixma\s*mg/g,"mg").replace(/pixma\s*mx/g,"mx").replace(/pixma\s*tr/g,"tr")
-  // ts-3350 | ts3350 | deskjet4220 => ts 3350 | deskjet 4220
-  .replace(/([a-z])[-]?(\d)/g,"$1 $2")
-  .replace(/[^a-z0-9\s-]/g," ").replace(/\s+/g," ").trim();
-
-// Cabeceras flexibles
-const FIELDS = [
-  ["referencia",["referencia","reference","ref","codigo","código"]],
-  ["consumibles",["consumibles","consumible","cartucho","tóner","toner"]],
-  ["capacidad",["capacidad","cap","yield"]],
-  ["compatibilidades",["compatibilidades","compatibilidad","compat","models","modelos"]],
-  ["descripcion",["descripcion","descripción","desc","detalle","producto"]]
-];
-function getField(row, stdKey){
-  const opts = FIELDS.find(x=>x[0]===stdKey)[1];
-  for (const k of Object.keys(row)){
-    const nk = (k||"").toString().trim().toLowerCase();
-    if (opts.includes(nk)) return row[k] ?? "";
-  }
-  return "";
-}
-
-function detectBrand(row){
-  const blob=(getField(row,"descripcion")+" "+getField(row,"compatibilidades")+" "+getField(row,"referencia")).toLowerCase();
-  if (/(^|\s)canon\b|pixma|cli|pgi|pg-?/.test(blob)) return "Canon";
-  if (/\bhp\b|deskjet|laserjet|officejet|envy/i.test(blob)) return "HP";
-  if (/epson|ecotank|workforce|^t\d{2,3}/i.test(blob)) return "Epson";
-  if (/brother|\btn-|\bdr-|\blc\b|\bmfc\b|\bdcp\b|\bhl-/i.test(blob)) return "Brother";
-  if (/lexmark|\b50f|\b51f|\b52d|\b71b/i.test(blob)) return "Lexmark";
-  if (/xerox|workcentre|versalink|altalink/i.test(blob)) return "Xerox";
-  return "Otros";
-}
-
-/* ======== Extracción robusta de MODELOS desde compat ======== */
-// Convierte etiquetas <Pixma TS> en texto normalizable
-function compatAsText(row){
-  const raw = getField(row,"compatibilidades");
-  if (!raw) return "";
-  return raw.replace(/<([^>]+)>/g, (_, inside) => " "+normalize(inside)+" ");
-}
-// Devuelve [{serie,num}, ...] desde compat
-function extractModelsFromCompat(row){
-  const compat = normalize(compatAsText(row))
-    .replace(/[;,|]/g," ").replace(/\s+/g," ").trim();
-  const out = [];
-  const re = /([a-z]{1,12})\s*(\d{2,7})/g; // serie corta + numero
-  let m; while ((m = re.exec(compat)) !== null) out.push({serie:m[1], num:m[2]});
-  return out;
-}
-
-/* ================== Query ================== */
-function parseQuery(raw){
-  const n = normalize(raw);
-  const tokens = n.split(" ").filter(Boolean);
-  const series=[], nums=[];
-  for (const t of tokens){
-    if (/^\d{2,7}$/.test(t)) nums.push(t);
-    else if (/^[a-z]{1,12}$/.test(t)) series.push(t);
-    else { const m=t.match(/^([a-z]{1,12})\s*(\d{2,7})$/); if (m){series.push(m[1]); nums.push(m[2]);} }
-  }
-  const drop=new Set(["canon","hp","epson","brother","lexmark","xerox","pixma"]);
-  return { series:series.filter(s=>!drop.has(s)), nums, raw:n };
-}
-
-/* ================== Match minimalista (4 puntos) ================== */
-function recordMatches(row, q, brandFilter){
-  // 1) serie + número: exige el par exacto en compat
-  if (q.series.length && q.nums.length){
-    const models = extractModelsFromCompat(row);
-    const aimS = new Set(q.series), aimN = new Set(q.nums);
-    return models.some(m => aimS.has(m.serie) && aimN.has(m.num));
-  }
-
-  // 2) solo número: exige que el número exista en compat
-  //    y si hay marca seleccionada, la serie debe pertenecer a esa marca
-  if (!q.series.length && q.nums.length){
-    const num = q.nums[0];
-    const models = extractModelsFromCompat(row);
-    const candidates = models.filter(m => m.num === num);
-    if (!candidates.length) return false;
-
-    if (brandFilter && SERIES_BY_BRAND[brandFilter]){
-      return candidates.some(m => SERIES_BY_BRAND[brandFilter].has(m.serie));
-    }
-    return true;
-  }
-
-  // 3) sin modelo explícito: no aceptamos por subcadenas
-  return false;
-}
-
-/* ================== Render ================== */
-function render(consList, capList){
-  const outC=$("#consumibles"), outK=$("#capacidad");
-  const c1=$("#count-cons"), c2=$("#count-cap");
-  const list=a=>a.length?("<ul>"+a.map(x=>"<li>"+escapeHtml(x)+"</li>").join("")+"</ul>"):"<span class='muted'>Sin resultados.</span>";
-  outC.innerHTML=list(consList); outK.innerHTML=list(capList);
-  outC.classList.toggle("muted",!consList.length); outK.classList.toggle("muted",!capList.length);
-  c1.textContent=String(consList.length||"—"); c2.textContent=String(capList.length||"—");
-}
-function escapeHtml(s){return String(s).replace(/[&<>\"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]))}
-function setMsg(t="",err=false){const el=$("#msg"); el.textContent=t; el.classList.toggle("err",!!err);}
-
-/* ================== Carga CSV ================== */
-async function loadData(){
-  const parse=(delim)=>new Promise((resolve,reject)=>{
-    Papa.parse(CSV_URL,{download:true,header:true,delimiter:delim,dynamicTyping:false,skipEmptyLines:true,
-      complete:r=>resolve(r.data),error:reject});
-  });
-  let data=await parse(';');
-  if (!data || data.length<1 || Object.keys(data[0]||{}).length<2) data=await parse(',');
-  return data;
-}
-function populateBrands(rows){
-  const brands=new Set(rows.map(detectBrand));
-  const order=["Canon","HP","Epson","Brother","Lexmark","Xerox","Otros"];
-  const ordered=[...order.filter(b=>brands.has(b)), ...[...brands].filter(b=>!order.includes(b))];
-  const sel=$("#brand"); ordered.forEach(b=>{const o=document.createElement("option");o.value=b;o.textContent=b;sel.appendChild(o);});
-}
-
-/* ================== Búsqueda ================== */
-function doSearch(){
-  const raw=$("#q").value.trim(); const brand=$("#brand").value;
-  setMsg(""); if (!raw){render([],[]);return;}
-  const q=parseQuery(raw);
-  const hits=DATA.filter(r=>recordMatches(r,q,brand||null));
-
-  if (!hits.length){
-    render([],[]);
-    setMsg('Modelo no encontrado. Pinche en el botón Google.', true);
-    return;
-  }
-
-  // Agrupa: consumible -> capacidades (sin duplicados) y salida breve
-  const byCons=new Map();
-  for (const r of hits){
-    const cons=(getField(r,"consumibles")||"").split(/\s*[;,/|]\s*/).filter(Boolean);
-    const caps=(getField(r,"capacidad")||"").split(/\s*[;,/|]\s*/).filter(Boolean);
-    for (const c of cons){
-      if (!byCons.has(c)) byCons.set(c,new Set());
-      caps.forEach(k=>byCons.get(c).add(k));
-    }
-  }
-
-  const consumibles=[]; const capacidades=new Set();
-  for (const [c,ks] of byCons.entries()){
-    consumibles.push(c);
-    for (const k of ks) capacidades.add(k);
-    if (consumibles.length>=30) break; // listado escueto
-  }
-
-  render(consumibles,[...capacidades]);
-}
-
-/* ================== UI ================== */
-function bindUI(){
-  $("#btnSearch").addEventListener("click",doSearch);
-  $("#btnClear").addEventListener("click",()=>{$("#q").value="";$("#brand").value="";setMsg("");render([],[]);$("#q").focus();});
-  $("#q").addEventListener("keydown",e=>{if(e.key==="Enter")doSearch();});
-  $("#btnGoogle").addEventListener("click",()=>{const v=$("#q").value.trim(); if(v) window.open("https://www.google.com/search?q="+encodeURIComponent(v),"_blank");});
-}
-
-window.addEventListener("load", async ()=>{
-  try{
-    DATA=await loadData();
-    populateBrands(DATA);
-  }catch(e){
-    console.error(e);
-    setMsg("No se pudo cargar ./listado_precios.csv (¿misma carpeta? ¿UTF-8?).", true);
-  }
-  bindUI();
-});
-</script>
-</body>
-</html>
+ (cd "$(git rev-parse --show-toplevel)" && git apply --3way <<'EOF' 
+diff --git a/index.html b/index.html
+index f7b5d4a1bc8f4d61fb51c89d743b030072981f68..ab88c31462734a7e3f826932780539ff98904362 100644
+--- a/index.html
++++ b/index.html
+@@ -1,269 +1,77 @@
+ <!DOCTYPE html>
+ <html lang="es">
+ <head>
+-<meta charset="utf-8" />
+-<meta name="viewport" content="width=device-width, initial-scale=1" />
+-<title>BUSCADOR IMPRESORAS</title>
+-
+-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:wght@400;600;700" rel="stylesheet" />
++<meta charset="UTF-8">
++<title>Buscador de consumibles</title>
+ <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js" defer></script>
+-
+ <style>
+-  :root{--bg1:#0ea5e9;--bg2:#22c55e;--card:#fff;--ink:#0f172a;--muted:#6b7280;
+-        --primary:#2563eb;--primary-2:#1d4ed8;--accent:#f97316;--google:#1a73e8;
+-        --shadow:0 12px 30px rgba(2,8,23,.18);--radius:18px}
+-  *{box-sizing:border-box} html,body{height:100%}
+-  body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
+-       color:var(--ink);background:linear-gradient(135deg,var(--bg1),var(--bg2)) fixed}
+-  .wrap{max-width:1100px;margin:0 auto;padding:40px 18px 80px}
+-  h1{margin:0 0 24px;text-align:center;color:#fff;font-weight:900;
+-     font-size:clamp(30px,4.8vw,50px);letter-spacing:.3px;text-shadow:0 6px 30px rgba(0,0,0,.25)}
+-  .row{display:flex;gap:10px;align-items:center;justify-content:center;margin:0 auto 12px;max-width:1000px;flex-wrap:wrap}
+-  .input,.select{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:12px 14px;font-size:16px;outline:none;box-shadow:var(--shadow);min-height:46px}
+-  .input{flex:1;min-width:260px}
+-  .select{min-width:180px}
+-  .btn{display:inline-flex;align-items:center;gap:8px;border:0;border-radius:12px;padding:12px 16px;font-weight:800;color:#fff;cursor:pointer;box-shadow:var(--shadow);transition:.14s}
+-  .btn:active{transform:scale(.98)}
+-  .btn-search{background:linear-gradient(135deg,var(--primary),var(--primary-2))}
+-  .btn-clear{background:linear-gradient(135deg,var(--accent),#fb923c)}
+-  .btn-google{background:linear-gradient(135deg,var(--google),#4285f4);display:block;margin:22px auto 0}
+-  .grid{display:grid;gap:22px;grid-template-columns:1fr;margin-top:8px}
+-  @media(min-width:900px){.grid{grid-template-columns:1fr 1fr}}
+-  .card{background:var(--card);border-radius:var(--radius);overflow:hidden;border:1px solid rgba(255,255,255,.6);box-shadow:var(--shadow)}
+-  .card header{padding:16px 18px;background:linear-gradient(0deg,#f8fafc,#fff);border-bottom:1px solid #eef2f7;font-weight:900;color:#0f172a;display:flex;justify-content:space-between}
+-  .count{color:#64748b;font-weight:800;font-size:13px}
+-  .body{padding:18px;min-height:200px;color:#111827;line-height:1.5}
+-  .muted{color:var(--muted);font-style:italic}
+-  .msg{text-align:center;min-height:22px;margin-bottom:6px;font-size:14px;color:#fef3c7}
+-  .msg.err{color:#fee2e2;font-weight:800;text-shadow:0 2px 12px rgba(0,0,0,.25)}
+-  .icons{font-family:"Material Symbols Rounded";font-weight:600;font-size:18px;vertical-align:-3px}
++body{font-family:Arial, sans-serif;margin:40px;background:#f5f5f5}
++#search{padding:8px;font-size:16px;width:260px}
++button{padding:8px 12px;margin-left:4px}
++#cols{display:flex;gap:40px;margin-top:20px}
++.col{flex:1;background:#fff;border:1px solid #ccc;border-radius:6px;padding:10px}
++.col h2{margin-top:0;font-size:18px;text-align:center}
++.col ul{list-style:disc;padding-left:20px}
++.col li{margin-bottom:6px}
+ </style>
+ </head>
+ <body>
+-  <div class="wrap">
+-    <h1>BUSCADOR IMPRESORAS</h1>
+-
+-    <div class="row" role="search">
+-      <input id="q" class="input" type="text" placeholder="Ej: TS3350, MG 3650, DeskJet 3747, F2140…" autocomplete="off" />
+-      <select id="brand" class="select" title="Marca">
+-        <option value="">Todas las marcas</option>
+-      </select>
+-      <button id="btnSearch" class="btn btn-search"><span class="icons">search</span>Buscar</button>
+-      <button id="btnClear" class="btn btn-clear"><span class="icons">backspace</span>Limpiar</button>
+-    </div>
+-    <div id="msg" class="msg"></div>
+-
+-    <div class="grid">
+-      <section class="card">
+-        <header><span><span class="icons">ink_pen</span> CONSUMIBLES</span><span id="count-cons" class="count">—</span></header>
+-        <div id="consumibles" class="body muted">—</div>
+-      </section>
+-      <section class="card">
+-        <header><span><span class="icons">water_drop</span> CAPACIDAD</span><span id="count-cap" class="count">—</span></header>
+-        <div id="capacidad" class="body muted">—</div>
+-      </section>
+-    </div>
+-
+-    <button id="btnGoogle" class="btn btn-google"><span class="icons">travel_explore</span> Buscar en Google</button>
++<h1>Buscador de consumibles</h1>
++<input id="search" type="text" placeholder="Referencia o modelo" autocomplete="off" />
++<button id="clear">Limpiar</button>
++<div id="cols">
++  <div class="col">
++    <h2>Consumibles</h2>
++    <ul id="consumibles"><li>Sin resultados</li></ul>
+   </div>
+-
++  <div class="col">
++    <h2>Capacidad</h2>
++    <ul id="capacidades"><li>Sin resultados</li></ul>
++  </div>
++</div>
+ <script>
+-/* ================== Config ================== */
+-const CSV_URL = "./listado_precios.csv"; // mismo directorio que index.html
+-let DATA = [];
+-
+-// Series permitidas por marca (para búsquedas SOLO por número)
+-const SERIES_BY_BRAND = {
+-  HP: new Set(["deskjet","officejet","laserjet","envy","designjet","photosmart","smarttank"]),
+-  Canon: new Set(["ts","mg","mx","tr","ip","mp","ix","lbp","maxify","selphy"]),
+-  Epson: new Set(["stylus","workforce","expression","xp","ecotank","l","wf"]),
+-  Brother: new Set(["hl","dcp","mfc","fax"]),
+-  Lexmark: new Set(["ms","mx","cs","cx","e","t"]),
+-  Xerox: new Set(["workcentre","versalink","altalink","phaser"])
+-};
+-
+-/* ================== Utils ================== */
+-const $ = s => document.querySelector(s);
+-
+-// Normaliza: acentos, alias, y separa letras/números pegados o con guión
+-const normalize = (s="") => s.toLowerCase()
+-  .replace(/[<>\[\](){}`]/g," ")
+-  .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+-  // alias de series y marcas comunes
+-  .replace(/desk\s*jet/g,"deskjet").replace(/laser\s*jet/g,"laserjet").replace(/office\s*jet/g,"officejet")
+-  .replace(/work\s*cent(re|er)/g,"workcentre")
+-  .replace(/pixma\s*ts/g,"ts").replace(/pixma\s*mg/g,"mg").replace(/pixma\s*mx/g,"mx").replace(/pixma\s*tr/g,"tr")
+-  // ts-3350 | ts3350 | deskjet4220 => ts 3350 | deskjet 4220
+-  .replace(/([a-z])[-]?(\d)/g,"$1 $2")
+-  .replace(/[^a-z0-9\s-]/g," ").replace(/\s+/g," ").trim();
+-
+-// Cabeceras flexibles
+-const FIELDS = [
+-  ["referencia",["referencia","reference","ref","codigo","código"]],
+-  ["consumibles",["consumibles","consumible","cartucho","tóner","toner"]],
+-  ["capacidad",["capacidad","cap","yield"]],
+-  ["compatibilidades",["compatibilidades","compatibilidad","compat","models","modelos"]],
+-  ["descripcion",["descripcion","descripción","desc","detalle","producto"]]
+-];
+-function getField(row, stdKey){
+-  const opts = FIELDS.find(x=>x[0]===stdKey)[1];
+-  for (const k of Object.keys(row)){
+-    const nk = (k||"").toString().trim().toLowerCase();
+-    if (opts.includes(nk)) return row[k] ?? "";
+-  }
+-  return "";
+-}
+-
+-function detectBrand(row){
+-  const blob=(getField(row,"descripcion")+" "+getField(row,"compatibilidades")+" "+getField(row,"referencia")).toLowerCase();
+-  if (/(^|\s)canon\b|pixma|cli|pgi|pg-?/.test(blob)) return "Canon";
+-  if (/\bhp\b|deskjet|laserjet|officejet|envy/i.test(blob)) return "HP";
+-  if (/epson|ecotank|workforce|^t\d{2,3}/i.test(blob)) return "Epson";
+-  if (/brother|\btn-|\bdr-|\blc\b|\bmfc\b|\bdcp\b|\bhl-/i.test(blob)) return "Brother";
+-  if (/lexmark|\b50f|\b51f|\b52d|\b71b/i.test(blob)) return "Lexmark";
+-  if (/xerox|workcentre|versalink|altalink/i.test(blob)) return "Xerox";
+-  return "Otros";
+-}
+-
+-/* ======== Extracción robusta de MODELOS desde compat ======== */
+-// Convierte etiquetas <Pixma TS> en texto normalizable
+-function compatAsText(row){
+-  const raw = getField(row,"compatibilidades");
+-  if (!raw) return "";
+-  return raw.replace(/<([^>]+)>/g, (_, inside) => " "+normalize(inside)+" ");
+-}
+-// Devuelve [{serie,num}, ...] desde compat
+-function extractModelsFromCompat(row){
+-  const compat = normalize(compatAsText(row))
+-    .replace(/[;,|]/g," ").replace(/\s+/g," ").trim();
+-  const out = [];
+-  const re = /([a-z]{1,12})\s*(\d{2,7})/g; // serie corta + numero
+-  let m; while ((m = re.exec(compat)) !== null) out.push({serie:m[1], num:m[2]});
+-  return out;
++function normalizar(t){
++  return (t||"").toString().toLowerCase()
++    .normalize("NFD").replace(/[^\p{Letter}\p{Number}]+/gu," ")
++    .replace(/\s+/g," ").trim();
+ }
+-
+-/* ================== Query ================== */
+-function parseQuery(raw){
+-  const n = normalize(raw);
+-  const tokens = n.split(" ").filter(Boolean);
+-  const series=[], nums=[];
+-  for (const t of tokens){
+-    if (/^\d{2,7}$/.test(t)) nums.push(t);
+-    else if (/^[a-z]{1,12}$/.test(t)) series.push(t);
+-    else { const m=t.match(/^([a-z]{1,12})\s*(\d{2,7})$/); if (m){series.push(m[1]); nums.push(m[2]);} }
+-  }
+-  const drop=new Set(["canon","hp","epson","brother","lexmark","xerox","pixma"]);
+-  return { series:series.filter(s=>!drop.has(s)), nums, raw:n };
+-}
+-
+-/* ================== Match minimalista (4 puntos) ================== */
+-function recordMatches(row, q, brandFilter){
+-  // 1) serie + número: exige el par exacto en compat
+-  if (q.series.length && q.nums.length){
+-    const models = extractModelsFromCompat(row);
+-    const aimS = new Set(q.series), aimN = new Set(q.nums);
+-    return models.some(m => aimS.has(m.serie) && aimN.has(m.num));
+-  }
+-
+-  // 2) solo número: exige que el número exista en compat
+-  //    y si hay marca seleccionada, la serie debe pertenecer a esa marca
+-  if (!q.series.length && q.nums.length){
+-    const num = q.nums[0];
+-    const models = extractModelsFromCompat(row);
+-    const candidates = models.filter(m => m.num === num);
+-    if (!candidates.length) return false;
+-
+-    if (brandFilter && SERIES_BY_BRAND[brandFilter]){
+-      return candidates.some(m => SERIES_BY_BRAND[brandFilter].has(m.serie));
++let datos=[];
++window.addEventListener("DOMContentLoaded",()=>{
++  Papa.parse("listado_precios_28-07-2025.csv",{
++    download:true,
++    header:true,
++    delimiter:";",
++    skipEmptyLines:true,
++    complete:(res)=>{
++      datos=res.data.map(r=>({
++        ref:r.REFERENCIA||"",
++        consumibles:r.CONSUMIBLES||"",
++        capacidad:r.CAPACIDAD||"",
++        blob:normalizar((r.REFERENCIA||"")+" "+(r.DESCRIPCION||"")+" "+(r.COMPATIBILIDADES||""))
++      }));
+     }
+-    return true;
+-  }
+-
+-  // 3) sin modelo explícito: no aceptamos por subcadenas
+-  return false;
+-}
+-
+-/* ================== Render ================== */
+-function render(consList, capList){
+-  const outC=$("#consumibles"), outK=$("#capacidad");
+-  const c1=$("#count-cons"), c2=$("#count-cap");
+-  const list=a=>a.length?("<ul>"+a.map(x=>"<li>"+escapeHtml(x)+"</li>").join("")+"</ul>"):"<span class='muted'>Sin resultados.</span>";
+-  outC.innerHTML=list(consList); outK.innerHTML=list(capList);
+-  outC.classList.toggle("muted",!consList.length); outK.classList.toggle("muted",!capList.length);
+-  c1.textContent=String(consList.length||"—"); c2.textContent=String(capList.length||"—");
+-}
+-function escapeHtml(s){return String(s).replace(/[&<>\"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]))}
+-function setMsg(t="",err=false){const el=$("#msg"); el.textContent=t; el.classList.toggle("err",!!err);}
+-
+-/* ================== Carga CSV ================== */
+-async function loadData(){
+-  const parse=(delim)=>new Promise((resolve,reject)=>{
+-    Papa.parse(CSV_URL,{download:true,header:true,delimiter:delim,dynamicTyping:false,skipEmptyLines:true,
+-      complete:r=>resolve(r.data),error:reject});
+   });
+-  let data=await parse(';');
+-  if (!data || data.length<1 || Object.keys(data[0]||{}).length<2) data=await parse(',');
+-  return data;
+-}
+-function populateBrands(rows){
+-  const brands=new Set(rows.map(detectBrand));
+-  const order=["Canon","HP","Epson","Brother","Lexmark","Xerox","Otros"];
+-  const ordered=[...order.filter(b=>brands.has(b)), ...[...brands].filter(b=>!order.includes(b))];
+-  const sel=$("#brand"); ordered.forEach(b=>{const o=document.createElement("option");o.value=b;o.textContent=b;sel.appendChild(o);});
+-}
+-
+-/* ================== Búsqueda ================== */
+-function doSearch(){
+-  const raw=$("#q").value.trim(); const brand=$("#brand").value;
+-  setMsg(""); if (!raw){render([],[]);return;}
+-  const q=parseQuery(raw);
+-  const hits=DATA.filter(r=>recordMatches(r,q,brand||null));
+-
+-  if (!hits.length){
+-    render([],[]);
+-    setMsg('Modelo no encontrado. Pinche en el botón Google.', true);
+-    return;
+-  }
+-
+-  // Agrupa: consumible -> capacidades (sin duplicados) y salida breve
+-  const byCons=new Map();
+-  for (const r of hits){
+-    const cons=(getField(r,"consumibles")||"").split(/\s*[;,/|]\s*/).filter(Boolean);
+-    const caps=(getField(r,"capacidad")||"").split(/\s*[;,/|]\s*/).filter(Boolean);
+-    for (const c of cons){
+-      if (!byCons.has(c)) byCons.set(c,new Set());
+-      caps.forEach(k=>byCons.get(c).add(k));
+-    }
+-  }
+-
+-  const consumibles=[]; const capacidades=new Set();
+-  for (const [c,ks] of byCons.entries()){
+-    consumibles.push(c);
+-    for (const k of ks) capacidades.add(k);
+-    if (consumibles.length>=30) break; // listado escueto
+-  }
+-
+-  render(consumibles,[...capacidades]);
++  document.getElementById('search').addEventListener('input',buscar);
++  document.getElementById('clear').addEventListener('click',()=>{document.getElementById('search').value='';buscar();});
++});
++function buscar(){
++  const q=normalizar(document.getElementById('search').value);
++  if(!q){mostrar([],[]);return;}
++  const hits=datos.filter(d=>d.blob.includes(q));
++  const cons=new Set();
++  const caps=new Set();
++  hits.forEach(h=>{
++    h.consumibles.split(/\s*[;,/|]\s*/).filter(Boolean).forEach(x=>cons.add(x));
++    h.capacidad.split(/\s*[;,/|]\s*/).filter(Boolean).forEach(x=>caps.add(x));
++  });
++  mostrar([...cons],[...caps]);
+ }
+-
+-/* ================== UI ================== */
+-function bindUI(){
+-  $("#btnSearch").addEventListener("click",doSearch);
+-  $("#btnClear").addEventListener("click",()=>{$("#q").value="";$("#brand").value="";setMsg("");render([],[]);$("#q").focus();});
+-  $("#q").addEventListener("keydown",e=>{if(e.key==="Enter")doSearch();});
+-  $("#btnGoogle").addEventListener("click",()=>{const v=$("#q").value.trim(); if(v) window.open("https://www.google.com/search?q="+encodeURIComponent(v),"_blank");});
++function mostrar(cons,caps){
++  const c=document.getElementById('consumibles');
++  const k=document.getElementById('capacidades');
++  c.innerHTML=cons.length?cons.map(x=>`<li>${x}</li>`).join(''):'<li>Sin resultados</li>';
++  k.innerHTML=caps.length?caps.map(x=>`<li>${x}</li>`).join(''):'<li>Sin resultados</li>';
+ }
+-
+-window.addEventListener("load", async ()=>{
+-  try{
+-    DATA=await loadData();
+-    populateBrands(DATA);
+-  }catch(e){
+-    console.error(e);
+-    setMsg("No se pudo cargar ./listado_precios.csv (¿misma carpeta? ¿UTF-8?).", true);
+-  }
+-  bindUI();
+-});
+ </script>
+ </body>
+ </html>
+ 
+EOF
+)
