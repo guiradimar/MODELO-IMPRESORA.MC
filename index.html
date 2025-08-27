@@ -1,235 +1,205 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Buscador de Consumibles e Impresoras</title>
-  <meta name="color-scheme" content="light dark" />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BUSCADOR DE IMPRESORAS</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
-    :root{
-      --bg: #0b1020;
-      --bg-soft: #0f172a;
-      --card: #0b1220;
-      --ink: #e5e7eb;
-      --muted: #9aa3b2;
-      --primary: #e11d48; /* rojo marca */
-      --ring: rgba(225,29,72,.35);
-      --border: #1f2937;
-      --chip: #121a2c;
+    :root {
+      --color-bg: #f5f8ff;
+      --color-card: #ffffff;
+      --color-primary: #e11d48;
+      --color-accent: #1d4ed8;
+      --color-border: #d1d5db;
+      --color-text: #1f2937;
+      --color-muted: #6b7280;
     }
-    @media (prefers-color-scheme: light) {
-      :root{
-        --bg: #f6f7fb; --bg-soft:#eef2ff; --card:#ffffff; --ink:#0f172a; --muted:#6b7280; --border:#e5e7eb; --chip:#f8fafc;
-      }
+
+    * {
+      box-sizing: border-box;
+      font-family: 'Inter', sans-serif;
     }
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{
-      margin:0; font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial;
-      color:var(--ink); background:
-        radial-gradient(900px 500px at 10% -10%, rgba(225,29,72,.12), transparent 60%),
-        radial-gradient(900px 500px at 90% -10%, rgba(59,130,246,.10), transparent 60%),
-        var(--bg);
+
+    body {
+      margin: 0;
+      background: var(--color-bg);
+      color: var(--color-text);
     }
-    .wrap{max-width:1100px; margin:40px auto; padding:0 16px}
-    header{display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:14px}
-    header h1{margin:0; font-size:clamp(22px,3.2vw,36px); letter-spacing:-0.02em}
-    header p{margin:4px 0 0; color:var(--muted)}
 
-    .searchbox{background:var(--card); border:1px solid var(--border); border-radius:18px; padding:16px; box-shadow:0 20px 40px rgba(2,6,23,.15)}
-    .row{display:grid; grid-template-columns:1fr auto auto; gap:10px}
-    .controls{display:flex; gap:10px}
-    input[type="text"]{
-      width:100%; font-size:16px; padding:14px 14px 14px 44px; border-radius:12px; border:1px solid var(--border); outline:none; background:transparent;
-      background: var(--card) url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" stroke="%239aa3b2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="7"/><path d="m20 20-4.3-4.3"/></svg>') no-repeat 12px center;
-      color:var(--ink);
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 2rem;
     }
-    input[type="text"]::placeholder{color:var(--muted)}
-    input[type="text"]:focus{border-color:var(--primary); box-shadow:0 0 0 6px var(--ring)}
 
-    button{display:inline-flex; align-items:center; gap:8px; border:none; border-radius:12px; padding:10px 14px; font-weight:600; cursor:pointer; transition:.2s transform ease,.2s opacity ease}
-    button:active{transform:translateY(1px)}
-    .btn-primary{background:var(--primary); color:#fff}
-    .btn-ghost{background:transparent; color:var(--ink); border:1px solid var(--border)}
+    h1 {
+      text-align: center;
+      font-size: 2.5rem;
+      color: var(--color-primary);
+      margin-bottom: 1.5rem;
+    }
 
-    .hint{color:var(--muted); font-size:12px; margin-top:8px}
+    .searchbox {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
 
-    .toolbar{display:flex; align-items:center; justify-content:space-between; margin:14px 2px 8px}
-    .count{color:var(--muted); font-size:13px}
+    .searchbox input {
+      flex-grow: 1;
+      padding: 1rem;
+      border-radius: 8px;
+      border: 1px solid var(--color-border);
+      font-size: 1rem;
+    }
 
-    .results{display:grid; gap:14px; margin-top:8px}
-    .card{background:var(--card); border:1px solid var(--border); border-radius:14px; padding:14px; box-shadow:0 10px 30px rgba(2,6,23,.1)}
-    .refline{display:flex; align-items:center; gap:12px}
-    .brandicon{width:32px; height:32px; object-fit:contain}
-    .ref{font-size:18px; font-weight:700; letter-spacing:.2px}
-    .meta{color:var(--muted); font-size:13px}
-    .chips{display:flex; flex-wrap:wrap; gap:8px; margin-top:12px}
-    .chip{background:var(--chip); border:1px solid var(--border); border-radius:999px; padding:6px 10px; font-size:12px; cursor:pointer}
+    .searchbox button {
+      padding: 1rem 1.25rem;
+      border: none;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+    }
 
-    .empty{color:var(--muted); text-align:center; padding:28px}
-    .empty a{display:inline-flex; align-items:center; gap:8px; margin-top:8px}
+    .search-btn {
+      background: var(--color-primary);
+      color: white;
+    }
 
-    .footerhint{color:var(--muted); font-size:12px; text-align:center; margin-top:16px}
+    .clear-btn {
+      background: var(--color-accent);
+      color: white;
+    }
+
+    .results {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+    }
+
+    .panel {
+      background: var(--color-card);
+      padding: 1.5rem;
+      border-radius: 10px;
+      border: 1px solid var(--color-border);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+    }
+
+    .panel h2 {
+      font-size: 1.25rem;
+      margin-bottom: 1rem;
+      color: var(--color-accent);
+    }
+
+    .panel ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .panel li {
+      margin-bottom: 0.5rem;
+    }
+
+    .no-results {
+      grid-column: 1 / span 2;
+      text-align: center;
+      margin-top: 2rem;
+    }
+
+    .no-results a {
+      display: inline-block;
+      margin-top: 1rem;
+      padding: 0.75rem 1rem;
+      background: var(--color-muted);
+      color: white;
+      border-radius: 6px;
+      text-decoration: none;
+    }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <header>
-      <div>
-        <h1>Buscador de Consumibles e Impresoras</h1>
-        <p>Escribe una <b>referencia</b> de cartucho/toner o un <b>modelo de impresora</b>. Busca también por <i>parte</i> del nombre.</p>
-      </div>
-    </header>
-
-    <section class="searchbox" role="search">
-      <div class="row">
-        <input id="q" type="text" placeholder="Ej.: 305XL, TN-2420, Canon MG3650, HP Laser 107..." list="sugs" autocomplete="off" />
-        <div class="controls">
-          <button id="btn" class="btn-primary" title="Buscar">
-            <span class="material-symbols-rounded" aria-hidden="true">search</span>Buscar
-          </button>
-          <button id="clear" class="btn-ghost" title="Limpiar">
-            <span class="material-symbols-rounded" aria-hidden="true">close</span>Limpiar
-          </button>
-        </div>
-      </div>
-      <datalist id="sugs"></datalist>
-      <div class="hint">Consejo: prueba sin acentos ni guiones (p. ej. “MG36” o “107a”).</div>
-    </section>
-
-    <div class="toolbar">
-      <div class="count" id="count">&nbsp;</div>
+  <div class="container">
+    <h1>BUSCADOR DE IMPRESORAS</h1>
+    <div class="searchbox">
+      <input id="searchInput" type="text" placeholder="Ej. 006R01457, WorkCentre 7425...">
+      <button class="search-btn" onclick="search()">Buscar</button>
+      <button class="clear-btn" onclick="clearSearch()">Limpiar</button>
     </div>
-
-    <section class="results" id="results" aria-live="polite"></section>
-
-    <div class="footerhint">Fuente de datos: <code id="src"></code></div>
+    <div class="results">
+      <div class="panel">
+        <h2>CONSUMIBLES</h2>
+        <ul id="consumibles"></ul>
+      </div>
+      <div class="panel">
+        <h2>CAPACIDADES</h2>
+        <ul id="capacidades"></ul>
+      </div>
+      <div class="no-results" id="noResults" style="display: none;">
+        <p>No se encontraron coincidencias.</p>
+        <a id="googleSearch" href="#" target="_blank">Buscar en Google</a>
+      </div>
+    </div>
   </div>
 
-<script>
-// ——— CONFIGURA AQUÍ ———
-const DATA_URL = "compatibilidades_cartuchos.json"; // Ruta o URL del JSON
-const LOGOS = {
-  hp: "hp.png",
-  canon: "canon.png",
-  epson: "epson.png",
-  brother: "brother.png",
-  xerox: "xerox.png"
-};
+  <script>
+    const DATA_URL = "compatibilidades_cartuchos.json";
+    let DATA = [];
 
-// ——— Utilidades de normalización ———
-const norm = (s) => (s || "")
-  .toLowerCase()
-  .normalize("NFD").replace(/\p{Diacritic}/gu, "")
-  .replace(/[.,;:()\[\]{}<>|\/\\\-_*+!?"'`~^%$#@&=]/g, " ")
-  .replace(/\s+/g, " ")
-  .trim();
-const includes = (haystack, needle) => norm(haystack).includes(norm(needle));
+    fetch(DATA_URL)
+      .then(res => res.json())
+      .then(json => DATA = json);
 
-// ——— Estado ———
-let DATA = [];
-let SUGS = new Set();
+    function normalize(text) {
+      return text.normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^\w\s]/g, "")
+        .toLowerCase();
+    }
 
-// ——— Carga de datos ———
-async function load() {
-  document.getElementById('src').textContent = DATA_URL;
-  const res = await fetch(DATA_URL);
-  DATA = await res.json();
+    function search() {
+      const query = document.getElementById("searchInput").value.trim();
+      const consumiblesEl = document.getElementById("consumibles");
+      const capacidadesEl = document.getElementById("capacidades");
+      const noResultsEl = document.getElementById("noResults");
+      const googleSearchEl = document.getElementById("googleSearch");
 
-  DATA.forEach(it => {
-    if (it.referencia) SUGS.add(it.referencia);
-    if (Array.isArray(it.compatibles)) it.compatibles.forEach(m => SUGS.add(m));
-  });
+      consumiblesEl.innerHTML = "";
+      capacidadesEl.innerHTML = "";
+      noResultsEl.style.display = "none";
 
-  const dl = document.getElementById("sugs");
-  [...SUGS].sort((a,b)=>a.localeCompare(b)).slice(0,6000).forEach(v => {
-    const o = document.createElement("option");
-    o.value = v; dl.appendChild(o);
-  });
-}
+      if (!query) return;
 
-// ——— Render ———
-function brandIcon(marca){
-  const key = (marca||"").toLowerCase();
-  const src = LOGOS[key];
-  return src ? `<img class="brandicon" src="${src}" alt="${marca||''}">` : "";
-}
+      const nq = normalize(query);
+      const results = DATA.filter(item => {
+        const haystack = `${item.referencia} ${item.descripcion} ${(item.compatibles || []).join(" ")}`;
+        return normalize(haystack).includes(nq);
+      });
 
-function render(items, q) {
-  const box = document.getElementById("results");
-  const count = document.getElementById("count");
-  if (!items.length) {
-    count.textContent = "Sin resultados";
-    const query = encodeURIComponent(q||"");
-    box.innerHTML = `
-      <div class="card empty">
-        <div>No encontramos coincidencias para <b>${q||''}</b>.</div>
-        <a class="btn-ghost" href="https://www.google.com/search?q=${query}" target="_blank" rel="noopener">
-          🔎 Buscar en Google
-        </a>
-      </div>`;
-    return;
-  }
+      if (results.length === 0) {
+        noResultsEl.style.display = "block";
+        googleSearchEl.href = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+        return;
+      }
 
-  count.textContent = `${items.length} resultado${items.length!==1?'s':''}`;
-  box.innerHTML = items.map(it => {
-    const chips = (it.compatibles||[]).map(c => `<span class="chip" data-chip="${c}">${c}</span>`).join("");
-    return `
-      <article class="card">
-        <div class="refline">
-          ${brandIcon(it.marca)}
-          <div>
-            <div class="ref">${it.referencia||''} <span class="meta">(${it.marca||'—'})</span></div>
-            <div class="meta">${it.descripcion||''}</div>
-          </div>
-        </div>
-        <div class="chips">${chips}</div>
-      </article>`;
-  }).join("");
+      results.forEach(item => {
+        const li1 = document.createElement("li");
+        li1.textContent = `${item.referencia} - ${item.descripcion}`;
+        consumiblesEl.appendChild(li1);
 
-  // chips clicables → nueva búsqueda
-  box.querySelectorAll('[data-chip]').forEach(ch => {
-    ch.addEventListener('click', () => {
-      const v = ch.getAttribute('data-chip');
-      document.getElementById('q').value = v;
-      search(v);
-    });
-  });
-}
+        const li2 = document.createElement("li");
+        li2.textContent = `${item.referencia} - ${item.capacidad}`;
+        capacidadesEl.appendChild(li2);
+      });
+    }
 
-// ——— Búsqueda ———
-function search(q){
-  const results = DATA.filter(it => {
-    const hay = [it.referencia||'', it.descripcion||'', ...(Array.isArray(it.compatibles)?it.compatibles:[])].join(' | ');
-    return includes(hay, q);
-  });
-
-  // Ordenar: coincidencia exacta por referencia primero; luego por longitud
-  results.sort((a,b)=>{
-    const ax = norm(a.referencia)===norm(q) ? 0:1;
-    const bx = norm(b.referencia)===norm(q) ? 0:1;
-    if (ax!==bx) return ax-bx;
-    return (a.referencia||'').length - (b.referencia||'').length;
-  });
-
-  render(results, q);
-}
-
-// ——— Eventos UI ———
-const input = document.getElementById('q');
-const btn = document.getElementById('btn');
-const clearBtn = document.getElementById('clear');
-
-btn.addEventListener('click', () => search(input.value));
-input.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ search(input.value) }});
-input.addEventListener('change', (e)=> search(e.target.value));
-clearBtn.addEventListener('click', ()=>{ input.value=''; render([], ''); input.focus(); document.getElementById('count').textContent=''; });
-
-// Init
-load().then(()=>{ render([], ''); });
-</script>
+    function clearSearch() {
+      document.getElementById("searchInput").value = "";
+      document.getElementById("consumibles").innerHTML = "";
+      document.getElementById("capacidades").innerHTML = "";
+      document.getElementById("noResults").style.display = "none";
+    }
+  </script>
 </body>
 </html>
